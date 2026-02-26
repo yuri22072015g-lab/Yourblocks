@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour — ИСПРАВЛЕНО движение</title>
+    <title>3D Parkour — ИДЕАЛЬНОЕ управление</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { 
@@ -61,7 +61,7 @@
             z-index: 100;
             pointer-events: none;
             border: 1px solid #4CAF50;
-            max-width: 200px;
+            max-width: 220px;
         }
         
         /* Левый джойстик */
@@ -161,7 +161,7 @@
         👥 <span id="player-counter">1</span>
     </div>
     <div id="instruction">
-        👆 1 палец: поворот камеры<br>
+        👆 1 палец: поворот камеры (как в шутерах)<br>
         ✌️ 2 пальца: зум (пинч)<br>
         🎮 Джойстик: движение (ВВЕРХ = ВПЕРЕД)
     </div>
@@ -377,11 +377,11 @@
             const otherPlayers = new Map();
             
             // ==================== LOCALSTORAGE ====================
-            const STORAGE_KEY = 'mobile_multiplayer_fixed_final';
+            const STORAGE_KEY = 'mobile_multiplayer_perfect';
             
-            if (!localStorage.getItem('mobile_fixed_final_init')) {
+            if (!localStorage.getItem('mobile_perfect_init')) {
                 localStorage.removeItem(STORAGE_KEY);
-                localStorage.setItem('mobile_fixed_final_init', 'true');
+                localStorage.setItem('mobile_perfect_init', 'true');
             }
             
             function getStoredPlayers() {
@@ -552,7 +552,7 @@
                 jumpBtn.classList.remove('active');
             });
             
-            // ========== ЖЕСТЫ КАМЕРЫ ==========
+            // ========== ЖЕСТЫ КАМЕРЫ - ИСПРАВЛЕНО ==========
             const gestureArea = document.getElementById('gesture-area');
             
             let gestureTouches = [];
@@ -589,15 +589,20 @@
                     cameraDistance = Math.max(minDistance, Math.min(maxDistance, cameraDistance));
                 }
                 
-                // Поворот камеры (1 палец)
+                // Поворот камеры (1 палец) - ИСПРАВЛЕНО!
                 if (gestureTouches.length === 1 && lastSingleTouch) {
                     const touch = gestureTouches[0];
                     
                     const deltaX = touch.clientX - lastSingleTouch.x;
                     const deltaY = touch.clientY - lastSingleTouch.y;
                     
-                    yawObject.rotation.y += deltaX * 0.005;
-                    pitchObject.rotation.x += deltaY * 0.003;
+                    // ГОРИЗОНТАЛЬ: палец вправо -> камера вправо (yaw -)
+                    yawObject.rotation.y -= deltaX * 0.005;
+                    
+                    // ВЕРТИКАЛЬ: палец вверх -> камера вверх (pitch -)
+                    pitchObject.rotation.x -= deltaY * 0.003;
+                    
+                    // Ограничиваем вертикальный угол
                     pitchObject.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitchObject.rotation.x));
                     
                     lastSingleTouch = {
@@ -747,10 +752,10 @@
                     if (keys["KeyA"]) moveX -= 1;
                     if (keys["KeyD"]) moveX += 1;
                     
-                    // Джойстик (телефон) - ИСПРАВЛЕНО: инвертируем Y, чтобы вверх = вперед
+                    // Джойстик (телефон) - ИСПРАВЛЕНО
                     if (joystickActive) {
                         moveX += joystickVector.x;
-                        moveZ += -joystickVector.y; // ИНВЕРТИРУЕМ Y
+                        moveZ += -joystickVector.y;
                     }
                     
                     if (moveX !== 0 || moveZ !== 0) {
