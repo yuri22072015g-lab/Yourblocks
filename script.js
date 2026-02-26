@@ -1,0 +1,257 @@
+// ======================
+// THREE INIT
+// ======================
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+
+let camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    2000
+);
+
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+// ======================
+// CAMERA SYSTEM
+// ======================
+
+let yawObject = new THREE.Object3D();
+let pitchObject = new THREE.Object3D();
+
+yawObject.add(pitchObject);
+pitchObject.add(camera);
+scene.add(yawObject);
+
+let cameraDistance = 7;
+let minDistance = 3;
+let maxDistance = 15;
+
+camera.position.set(0, 2.5, cameraDistance);
+
+document.addEventListener("wheel", e => {
+    cameraDistance += e.deltaY * 0.01;
+    cameraDistance = Math.max(minDistance, Math.min(maxDistance, cameraDistance));
+    camera.position.set(0, 2.5, cameraDistance);
+});
+
+// ======================
+// LIGHT
+// ======================
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+let dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(20, 30, 10);
+scene.add(dirLight);
+
+// ======================
+// CANNON WORLD
+// ======================
+
+let world = new CANNON.World();
+world.gravity.set(0, -9.82, 0);
+world.broadphase = new CANNON.SAPBroadphase(world);
+world.solver.iterations = 20;
+
+let groundMaterial = new CANNON.Material("ground");
+let playerMaterial = new CANNON.Material("player");
+
+world.addContactMaterial(
+    new CANNON.ContactMaterial(playerMaterial, groundMaterial, {
+        friction: 0.05
+    })
+);
+
+// ======================
+// START PLATFORM
+// ======================
+
+let startMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(20, 2, 20),
+    new THREE.MeshStandardMaterial({ color: 0x444444 })
+);
+startMesh.position.set(0, 0, 10);
+scene.add(startMesh);
+
+let startBody = new CANNON.Body({ mass: 0, material: groundMaterial });
+startBody.addShape(new CANNON.Box(new CANNON.Vec3(10, 1, 10)));
+startBody.position.set(0, 0, 10);
+world.addBody(startBody);
+
+// ======================
+// PARKOUR
+// ======================
+
+for (let i = 0; i < 40; i++) {
+
+    let mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(4, 1, 4),
+        new THREE.MeshStandardMaterial({
+            color: new THREE.Color().setHSL(i / 40, 0.8, 0.5)
+        })
+    );
+
+    mesh.position.set(0, 2, -i * 8);
+    scene.add(mesh);
+
+    let body = new CANNON.Body({ mass: 0, material: groundMaterial });
+    body.addShape(new CANNON.Box(new CANNON.Vec3(2, 0.5, 2)));
+    body.position.copy(mesh.position);
+    world.addBody(body);
+}
+
+// ======================
+// PLAYER
+// ======================
+
+let playerBody = new CANNON.Body({
+    mass: 5,
+    material: playerMaterial,
+    linearDamping: 0.9,
+    fixedRotation: true
+});
+
+let playerShape = new CANNON.Sphere(0.9);
+playerBody.addShape(playerShape);
+playerBody.position.set(0, 8, 5);
+world.addBody(playerBody);
+
+let playerGroup = new THREE.Group();
+
+let bodyMat = new THREE.MeshStandardMaterial({ color: 0x0066ff });
+let limbMat = new THREE.MeshStandardMaterial({ color: 0x003399 });
+let headMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+
+let torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), bodyMat);
+torso.position.y = 1.6;
+playerGroup.add(torso);
+
+let head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), headMat);
+head.position.y = 3;
+playerGroup.add(head);
+
+let leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), limbMat);
+leftLeg.position.set(-0.4, 0.2, 0);
+playerGroup.add(leftLeg);
+
+let rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), limbMat);
+rightLeg.position.set(0.4, 0.2, 0);
+playerGroup.add(rightLeg);
+
+let leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), limbMat);
+leftArm.position.set(-0.8, 1.8, 0);
+playerGroup.add(leftArm);
+
+let rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), limbMat);
+rightArm.position.set(0.8, 1.8, 0);
+playerGroup.add(rightArm);
+
+scene.add(playerGroup);
+
+// ======================
+// CONTROLS
+// ======================
+
+let keys = {};
+
+document.addEventListener("keydown", e => keys[e.code] = true);
+document.addEventListener("keyup", e => keys[e.code] = false);
+
+document.body.addEventListener("click", () => {
+    document.body.requestPointerLock();
+});
+
+document.addEventListener("mousemove", e => {
+    if (document.pointerLockElement === document.body) {
+        yawObject.rotation.y -= e.movementX * 0.002;
+        pitchObject.rotation.x -= e.movementY * 0.002;
+        pitchObject.rotation.x = Math.max(-Math.PI/3, Math.min(Math.PI/3, pitchObject.rotation.x));
+    }
+});
+
+// ======================
+// RESET
+// ======================
+
+function resetPlayer() {
+    playerBody.position.set(0, 8, 5);
+    playerBody.velocity.set(0, 0, 0);
+}
+
+// ======================
+// VISIBILITY
+// ======================
+
+function updatePlayerVisibility() {
+    playerGroup.visible = cameraDistance > minDistance + 0.2;
+}
+
+// ======================
+// GAME LOOP
+// ======================
+
+let clock = new THREE.Clock();
+let walkTime = 0;
+
+function animate() {
+
+    requestAnimationFrame(animate);
+
+    let delta = clock.getDelta();
+    world.step(1/60, delta, 3);
+
+    let moveSpeed = 8;
+
+    let forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+    let right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
+
+    let moveX = 0;
+    let moveZ = 0;
+
+    if (keys["KeyW"]) { moveX += forward.x; moveZ += forward.z; }
+    if (keys["KeyS"]) { moveX -= forward.x; moveZ -= forward.z; }
+    if (keys["KeyA"]) { moveX -= right.x; moveZ -= right.z; }
+    if (keys["KeyD"]) { moveX += right.x; moveZ += right.z; }
+
+    playerBody.velocity.x = moveX * moveSpeed;
+    playerBody.velocity.z = moveZ * moveSpeed;
+
+    if (keys["Space"] && Math.abs(playerBody.velocity.y) < 0.1) {
+        playerBody.velocity.y = 9;
+    }
+
+    let isMoving = Math.abs(moveX) > 0 || Math.abs(moveZ) > 0;
+
+    if (isMoving) {
+        walkTime += delta * 8;
+        let swing = Math.sin(walkTime) * 0.6;
+        leftLeg.rotation.x = swing;
+        rightLeg.rotation.x = -swing;
+        leftArm.rotation.x = -swing;
+        rightArm.rotation.x = swing;
+    } else {
+        leftLeg.rotation.x = 0;
+        rightLeg.rotation.x = 0;
+        leftArm.rotation.x = 0;
+        rightArm.rotation.x = 0;
+    }
+
+    if (playerBody.position.y < -40) {
+        resetPlayer();
+    }
+
+    updatePlayerVisibility();
+
+    playerGroup.position.copy(playerBody.position);
+    yawObject.position.copy(playerBody.position);
+
+    renderer.render(scene, camera);
+}
+
+animate();
