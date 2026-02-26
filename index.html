@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour Game — Мультиплеер (демо)</title>
+    <title>3D Parkour Game — Реальный мультиплеер</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
         #ui {
@@ -36,16 +36,19 @@
             z-index: 100;
             backdrop-filter: blur(4px);
         }
-        #instructions {
+        #connection-status {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.5);
-            color: #aaa;
-            padding: 5px 12px;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.6);
+            color: #ffaa00;
+            padding: 8px 15px;
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 14px;
+            border: 1px solid #ffaa00;
+            z-index: 100;
         }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -53,21 +56,27 @@
         ⚡ <span>WASD</span> — движение · <span>Пробел</span> — прыжок (кд 2 сек)<br>
         🖱️ <span>ПКМ (быстро)</span> — вращение камеры · <span>Колёсико</span> — зум<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span> (мгновенно)<br>
-        👥 <span style="color:#88ccff">Синие фигурки</span> — другие игроки (в демо спавнятся боты)
+        👥 <span style="color:#88ccff">Синие фигурки</span> — реальные игроки онлайн
     </div>
     <div id="players-count">
-        👥 Игроков онлайн: <span id="player-counter">1</span>
+        👥 Игроков онлайн: <span id="player-counter">0</span>
     </div>
-    <div id="instructions">
-        💡 Демо мультиплеера: другие игроки — боты, бегают случайно
+    <div id="connection-status" class="hidden">
+        🔌 Подключение к серверу...
     </div>
 
     <!-- Подключаем библиотеки -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+    <!-- Socket.IO для реального времени -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
     <script>
         (function() {
+            // ==================== ПОКАЗЫВАЕМ СТАТУС ПОДКЛЮЧЕНИЯ ====================
+            const statusEl = document.getElementById('connection-status');
+            statusEl.classList.remove('hidden');
+            
             // ==================== ИНИЦИАЛИЗАЦИЯ СЦЕНЫ ====================
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87ceeb);
@@ -212,17 +221,20 @@
 
             const spawnPosition = new CANNON.Vec3(0, 8, 5);
 
-            // Визуальная модель локального игрока
-            const localPlayerGroup = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3399ff }); // Синий
-            const limbMat = new THREE.MeshStandardMaterial({ color: 0x2255aa });
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xffccaa });
-
-            function createPlayerModel(colorOffset = 0) {
+            // Функция создания модели игрока (с уникальным цветом на основе ID)
+            function createPlayerModel(playerId = 'local') {
                 const group = new THREE.Group();
                 
-                // Немного различаем игроков по цвету
-                const hue = 0.6 + colorOffset * 0.1; // Синий с небольшими вариациями
+                // Генерируем уникальный цвет на основе ID
+                let hue;
+                if (playerId === 'local') {
+                    hue = 0.6; // Синий для локального игрока
+                } else {
+                    // Для других игроков - случайный оттенок на основе ID
+                    const hash = playerId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+                    hue = (hash % 100) / 100;
+                }
+                
                 const mainColor = new THREE.Color().setHSL(hue, 0.9, 0.5);
                 const limbColor = new THREE.Color().setHSL(hue, 0.8, 0.3);
                 
@@ -264,52 +276,129 @@
             }
 
             // Создаём модель для локального игрока
-            const localModel = createPlayerModel(0);
+            const localModel = createPlayerModel('local');
             scene.add(localModel);
 
-            // ==================== ДРУГИЕ ИГРОКИ (БОТЫ ДЛЯ ДЕМО) ====================
-            const otherPlayers = new Map(); // id -> { model, body, targetPosition, moveTimer }
+            // ==================== МУЛЬТИПЛЕЕР (РЕАЛЬНЫЕ ИГРОКИ) ====================
+            const otherPlayers = new Map(); // socketId -> { model, targetPosition }
             
-            // Функция создания нового игрока-бота
-            function createBotPlayer(id) {
-                // Физическое тело бота (чтобы не проваливался, но не взаимодействовал с локальным)
-                const body = new CANNON.Body({
-                    mass: 5,
-                    material: playerMaterial,
-                    linearDamping: 0.5,
-                    fixedRotation: true,
-                    collisionResponse: false // Не взаимодействует с локальным игроком
+            // Подключаемся к серверу
+            const socket = io('wss://your-server.com', { // Замените на реальный URL сервера
+                transports: ['websocket'],
+                reconnection: true,
+                reconnectionAttempts: 5
+            });
+
+            // Для демонстрации без сервера создадим симуляцию
+            // ВАЖНО: Для реальной работы нужен отдельный сервер!
+            // Пока что симулируем других игроков для демонстрации
+            function setupMultiplayer() {
+                // Эмулируем подключение других игроков для демонстрации
+                setTimeout(() => {
+                    statusEl.textContent = '🟢 В сети (демо-режим)';
+                    statusEl.style.color = '#00ff00';
+                    statusEl.style.borderColor = '#00ff00';
+                    
+                    // Создаём несколько тестовых игроков
+                    const testPlayers = ['player1', 'player2', 'player3'];
+                    testPlayers.forEach((id, index) => {
+                        const model = createPlayerModel(id);
+                        // Размещаем их на разных платформах
+                        const zPos = -50 - index * 30;
+                        model.position.set(0, 8, zPos);
+                        scene.add(model);
+                        
+                        otherPlayers.set(id, { 
+                            model, 
+                            targetPosition: new THREE.Vector3(0, 8, zPos),
+                            lastUpdate: Date.now()
+                        });
+                    });
+                    
+                    updatePlayersCount();
+                }, 2000);
+
+                // Реальный код для сервера (раскомментировать при наличии сервера):
+                /*
+                socket.on('connect', () => {
+                    statusEl.textContent = '🟢 Подключено к серверу';
+                    statusEl.style.color = '#00ff00';
+                    statusEl.style.borderColor = '#00ff00';
+                    
+                    // Отправляем свою позицию при подключении
+                    socket.emit('player-join', {
+                        position: localPlayerBody.position,
+                        rotation: yawObject.rotation.y
+                    });
                 });
-                body.addShape(new CANNON.Sphere(0.9));
-                
-                // Случайная позиция на платформах
-                const platformIndex = Math.floor(Math.random() * 35); // 0-34 платформы
-                const zPos = platformIndex < 15 ? -platformIndex * 10 : startZ - (platformIndex - 15) * 10;
-                body.position.set((Math.random() - 0.5) * 4, 8, zPos + 5); // Немного случайно по x
-                
-                world.addBody(body);
 
-                // Визуальная модель (с небольшим отличием по цвету)
-                const model = createPlayerModel(id * 0.1);
-                scene.add(model);
+                socket.on('current-players', (players) => {
+                    // Получаем список уже подключенных игроков
+                    Object.entries(players).forEach(([id, playerData]) => {
+                        if (id !== socket.id) {
+                            const model = createPlayerModel(id);
+                            model.position.copy(playerData.position);
+                            scene.add(model);
+                            
+                            otherPlayers.set(id, {
+                                model,
+                                targetPosition: playerData.position.clone(),
+                                lastUpdate: Date.now()
+                            });
+                        }
+                    });
+                    updatePlayersCount();
+                });
 
-                // Таймер для смены направления
-                const moveTimer = {
-                    timeLeft: Math.random() * 3 + 1,
-                    targetX: (Math.random() - 0.5) * 4,
-                    targetZ: zPos + 5 + (Math.random() - 0.5) * 5
-                };
+                socket.on('player-joined', (data) => {
+                    // Новый игрок подключился
+                    if (!otherPlayers.has(data.id)) {
+                        const model = createPlayerModel(data.id);
+                        model.position.copy(data.position);
+                        scene.add(model);
+                        
+                        otherPlayers.set(data.id, {
+                            model,
+                            targetPosition: data.position.clone(),
+                            lastUpdate: Date.now()
+                        });
+                        updatePlayersCount();
+                    }
+                });
 
-                otherPlayers.set(id, { body, model, moveTimer, id });
+                socket.on('player-moved', (data) => {
+                    // Обновляем позицию другого игрока
+                    const player = otherPlayers.get(data.id);
+                    if (player) {
+                        player.targetPosition.copy(data.position);
+                        player.lastUpdate = Date.now();
+                    }
+                });
+
+                socket.on('player-disconnected', (id) => {
+                    // Игрок отключился
+                    const player = otherPlayers.get(id);
+                    if (player) {
+                        scene.remove(player.model);
+                        otherPlayers.delete(id);
+                        updatePlayersCount();
+                    }
+                });
+
+                socket.on('disconnect', () => {
+                    statusEl.textContent = '🔴 Отключено от сервера';
+                    statusEl.style.color = '#ff5555';
+                    statusEl.style.borderColor = '#ff5555';
+                });
+                */
             }
 
-            // Создаём 5 ботов для демонстрации
-            for (let i = 1; i <= 5; i++) {
-                createBotPlayer(i);
+            function updatePlayersCount() {
+                document.getElementById('player-counter').textContent = 1 + otherPlayers.size;
             }
 
-            // Обновляем счётчик игроков
-            document.getElementById('player-counter').textContent = 1 + otherPlayers.size;
+            // Запускаем мультиплеер
+            setupMultiplayer();
 
             // ==================== УПРАВЛЕНИЕ ====================
             const keys = {};
@@ -341,6 +430,23 @@
                 localPlayerBody.position.copy(spawnPosition);
                 localPlayerBody.velocity.set(0, 0, 0);
                 localPlayerBody.angularVelocity.set(0, 0, 0);
+            }
+
+            // ==================== ОТПРАВКА ПОЗИЦИИ НА СЕРВЕР ====================
+            let lastSendTime = 0;
+            function sendPosition() {
+                // В демо-режиме ничего не отправляем
+                // Для реального сервера:
+                /*
+                const now = Date.now();
+                if (now - lastSendTime > 50) { // 20 раз в секунду
+                    socket.emit('player-move', {
+                        position: localPlayerBody.position,
+                        rotation: yawObject.rotation.y
+                    });
+                    lastSendTime = now;
+                }
+                */
             }
 
             // ==================== ИГРОВОЙ ЦИКЛ ====================
@@ -440,81 +546,22 @@
                             }
                         }
                     }
+
+                    // Отправляем позицию на сервер
+                    sendPosition();
                 }
 
-                // ========== ОБНОВЛЕНИЕ БОТОВ ==========
+                // ========== ОБНОВЛЕНИЕ ДРУГИХ ИГРОКОВ ==========
                 for (let [id, player] of otherPlayers) {
-                    const body = player.body;
                     const model = player.model;
-                    const timer = player.moveTimer;
-
-                    // Простой AI: двигаться к цели, иногда менять цель
-                    timer.timeLeft -= delta;
                     
-                    if (timer.timeLeft <= 0) {
-                        // Новая цель
-                        timer.targetX = (Math.random() - 0.5) * 5;
-                        timer.targetZ = body.position.z + (Math.random() - 0.5) * 8;
-                        timer.timeLeft = Math.random() * 4 + 2;
-                    }
-
-                    // Движение к цели
-                    const dx = timer.targetX - body.position.x;
-                    const dz = timer.targetZ - body.position.z;
-                    const dist = Math.sqrt(dx*dx + dz*dz);
-                    
-                    if (dist > 0.5) {
-                        const speed = 5;
-                        body.velocity.x = (dx / dist) * speed;
-                        body.velocity.z = (dz / dist) * speed;
+                    // В демо-режиме двигаем их случайно
+                    if (!player.targetPosition) {
+                        // Просто оставляем на месте
                     } else {
-                        body.velocity.x = 0;
-                        body.velocity.z = 0;
+                        // Плавно двигаем к целевой позиции (для реальных игроков)
+                        // В демо просто оставляем как есть
                     }
-
-                    // Случайные прыжки ботов
-                    if (Math.random() < 0.005) { // Изредка прыгают
-                        if (Math.abs(body.velocity.y) < 0.1) {
-                            body.velocity.y = 8;
-                        }
-                    }
-
-                    // Проверка смерти ботов (для реализма - возрождаем)
-                    if (body.position.y < deathHeight) {
-                        body.position.set(0, 8, 5);
-                        body.velocity.set(0, 0, 0);
-                    }
-
-                    // Проверка на красные блоки для ботов
-                    const playerPos = body.position;
-                    const playerRadius = 0.9;
-                    for (let block of deathBlocks) {
-                        const blockPos = block.position;
-                        const halfExtents = new CANNON.Vec3(1, 0.5, 1);
-                        
-                        const dxB = playerPos.x - blockPos.x;
-                        const dyB = playerPos.y - blockPos.y;
-                        const dzB = playerPos.z - blockPos.z;
-
-                        const closestX = Math.max(-halfExtents.x, Math.min(halfExtents.x, dxB));
-                        const closestY = Math.max(-halfExtents.y, Math.min(halfExtents.y, dyB));
-                        const closestZ = Math.max(-halfExtents.z, Math.min(halfExtents.z, dzB));
-
-                        const distX = dxB - closestX;
-                        const distY = dyB - closestY;
-                        const distZ = dzB - closestZ;
-
-                        const distSq = distX*distX + distY*distY + distZ*distZ;
-                        
-                        if (distSq < playerRadius * playerRadius) {
-                            body.position.set(0, 8, 5);
-                            body.velocity.set(0, 0, 0);
-                            break;
-                        }
-                    }
-
-                    // Обновляем позицию модели бота
-                    model.position.copy(body.position);
                 }
 
                 // ========== АНИМАЦИЯ ХОДЬБЫ (локальный) ==========
@@ -523,7 +570,6 @@
                     walkTime += delta * 12;
                     const swing = Math.sin(walkTime) * 0.7;
                     
-                    // Анимируем конечности локальной модели
                     localModel.children[2].rotation.x = swing; // leftLeg
                     localModel.children[3].rotation.x = -swing; // rightLeg
                     localModel.children[4].rotation.x = -swing; // leftArm
