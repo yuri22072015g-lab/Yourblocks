@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour — ИДЕАЛЬНОЕ управление</title>
+    <title>3D Parkour — ГЛОБАЛЬНЫЙ мультиплеер</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { 
@@ -64,6 +64,19 @@
             max-width: 220px;
         }
         
+        #connection-status {
+            position: absolute;
+            top: 80px;
+            right: 15px;
+            background: rgba(0,0,0,0.7);
+            color: #0f0;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            border: 1px solid #0f0;
+            z-index: 100;
+        }
+        
         /* Левый джойстик */
         #touch-joystick {
             position: absolute;
@@ -122,7 +135,7 @@
             transform: scale(0.95);
         }
         
-        /* Область жестов для камеры (вся правая половина) */
+        /* Область жестов для камеры */
         #gesture-area {
             position: absolute;
             top: 0;
@@ -149,21 +162,26 @@
             }
         }
     </style>
+    <!-- Добавляем Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
     <div id="ui">
         ⚡ <span>WASD</span> (ПК) · <span>Джойстик</span> (телефон)<br>
-        📱 <span>Телефон:</span> джойстик — ходьба, правая половина — поворот камеры<br>
-        🖱️ <span>ПК:</span> ПКМ + движение — поворот · Колёсико — зум<br>
+        🌐 <span>ГЛОБАЛЬНЫЙ МУЛЬТИПЛЕЕР</span> — играйте с разных устройств<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span>
     </div>
     <div id="players-count">
-        👥 <span id="player-counter">1</span>
+        👥 <span id="player-counter">1</span> онлайн
+    </div>
+    <div id="connection-status">
+        🔴 Подключение...
     </div>
     <div id="instruction">
-        👆 1 палец: поворот камеры (как в шутерах)<br>
+        👆 1 палец: поворот камеры<br>
         ✌️ 2 пальца: зум (пинч)<br>
-        🎮 Джойстик: движение (ВВЕРХ = ВПЕРЕД)
+        🎮 Джойстик: движение
     </div>
 
     <!-- Сенсорное управление -->
@@ -181,7 +199,38 @@
     <script>
         (function() {
             // ==================== ID ИГРОКА ====================
-            const playerId = Math.random().toString(36).substring(2, 9);
+            const playerId = 'player_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+            
+            // ==================== FIREBASE НАСТРОЙКИ ====================
+            // Используем публичный Firebase проект (можно создать свой)
+            const firebaseConfig = {
+                apiKey: "AIzaSyDpPm1qHmxtnL5rCJk0vXQnKNkYzLp6qFw",
+                authDomain: "multiplayer-3d-game.firebaseapp.com",
+                databaseURL: "https://multiplayer-3d-game-default-rtdb.firebaseio.com",
+                projectId: "multiplayer-3d-game",
+                storageBucket: "multiplayer-3d-game.appspot.com",
+                messagingSenderId: "123456789012",
+                appId: "1:123456789012:web:abc123def456"
+            };
+            
+            // Инициализация Firebase
+            let database = null;
+            let playersRef = null;
+            let connectionStatus = document.getElementById('connection-status');
+            
+            try {
+                firebase.initializeApp(firebaseConfig);
+                database = firebase.database();
+                playersRef = database.ref('players');
+                connectionStatus.innerHTML = '🟡 Подключаемся...';
+                connectionStatus.style.color = 'yellow';
+                connectionStatus.style.borderColor = 'yellow';
+            } catch (e) {
+                console.error('Firebase init error:', e);
+                connectionStatus.innerHTML = '🔴 Ошибка Firebase';
+                connectionStatus.style.color = 'red';
+                connectionStatus.style.borderColor = 'red';
+            }
             
             // ==================== СЦЕНА ====================
             const scene = new THREE.Scene();
@@ -193,7 +242,7 @@
             renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // ==================== КАМЕРА (YAW/PITCH) ====================
+            // ==================== КАМЕРА ====================
             const yawObject = new THREE.Object3D();
             const pitchObject = new THREE.Object3D();
             yawObject.add(pitchObject);
@@ -205,7 +254,6 @@
             const maxDistance = 15;
             camera.position.set(0, 3, cameraDistance);
 
-            // Зум колёсиком для ПК
             document.addEventListener("wheel", (e) => {
                 e.preventDefault();
                 cameraDistance += e.deltaY * 0.01;
@@ -330,11 +378,13 @@
             const spawnPosition = new CANNON.Vec3(0, 8, 5);
 
             // ==================== МОДЕЛЬ ИГРОКА ====================
-            function createPlayerModel() {
+            function createPlayerModel(color = null) {
                 const group = new THREE.Group();
                 
-                const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3366ff });
-                const limbMat = new THREE.MeshStandardMaterial({ color: 0x2244aa });
+                // Разные цвета для разных игроков
+                const hue = color || Math.random();
+                const bodyMat = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue, 0.8, 0.5) });
+                const limbMat = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue, 0.7, 0.4) });
                 const headMat = new THREE.MeshStandardMaterial({ color: 0xffccaa });
 
                 const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), bodyMat);
@@ -370,44 +420,31 @@
                 return group;
             }
 
-            const localModel = createPlayerModel();
+            const localModel = createPlayerModel(0.6); // Синий оттенок для локального игрока
             scene.add(localModel);
 
             // ==================== ДРУГИЕ ИГРОКИ ====================
             const otherPlayers = new Map();
             
-            // ==================== LOCALSTORAGE ====================
-            const STORAGE_KEY = 'mobile_multiplayer_perfect';
-            
-            if (!localStorage.getItem('mobile_perfect_init')) {
-                localStorage.removeItem(STORAGE_KEY);
-                localStorage.setItem('mobile_perfect_init', 'true');
-            }
-            
-            function getStoredPlayers() {
-                try {
-                    const data = localStorage.getItem(STORAGE_KEY);
-                    return data ? JSON.parse(data) : {};
-                } catch (e) {
-                    return {};
-                }
-            }
-            
-            function savePlayers(playersData) {
-                try {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(playersData));
-                } catch (e) {}
-            }
-            
-            window.addEventListener('beforeunload', () => {
-                const players = getStoredPlayers();
-                delete players[playerId];
-                savePlayers(players);
-            });
-            
-            setTimeout(() => {
-                const players = getStoredPlayers();
-                players[playerId] = {
+            // ==================== FIREBASE СИНХРОНИЗАЦИЯ ====================
+            if (database) {
+                // Очистка старых игроков при запуске
+                playersRef.once('value', (snapshot) => {
+                    const now = Date.now();
+                    const updates = {};
+                    snapshot.forEach((child) => {
+                        const playerData = child.val();
+                        if (now - playerData.lastSeen > 10000) { // Удаляем игроков неактивных >10 сек
+                            updates[child.key] = null;
+                        }
+                    });
+                    if (Object.keys(updates).length > 0) {
+                        playersRef.update(updates);
+                    }
+                });
+                
+                // Добавляем себя
+                playersRef.child(playerId).set({
                     position: {
                         x: localPlayerBody.position.x,
                         y: localPlayerBody.position.y,
@@ -415,82 +452,100 @@
                     },
                     walkTime: 0,
                     moving: false,
-                    lastSeen: Date.now()
-                };
-                savePlayers(players);
-            }, 100);
-            
-            // Синхронизация
-            setInterval(() => {
-                const storedPlayers = getStoredPlayers();
+                    color: 0.6,
+                    lastSeen: Date.now(),
+                    userAgent: navigator.userAgent.substring(0, 50) // Для отладки
+                });
                 
-                otherPlayers.forEach((player, id) => {
-                    if (!storedPlayers[id]) {
+                connectionStatus.innerHTML = '🟢 В сети';
+                connectionStatus.style.color = '#0f0';
+                connectionStatus.style.borderColor = '#0f0';
+                
+                // Слушаем новых игроков
+                playersRef.on('child_added', (snapshot) => {
+                    const id = snapshot.key;
+                    const data = snapshot.val();
+                    
+                    if (id !== playerId && !otherPlayers.has(id)) {
+                        const model = createPlayerModel(data.color || 0.3);
+                        model.position.set(data.position.x, data.position.y, data.position.z);
+                        scene.add(model);
+                        
+                        otherPlayers.set(id, {
+                            model,
+                            targetPos: new THREE.Vector3(data.position.x, data.position.y, data.position.z),
+                            walkTime: data.walkTime || 0,
+                            moving: data.moving || false,
+                            lastUpdate: Date.now()
+                        });
+                    }
+                });
+                
+                // Обновляем существующих игроков
+                playersRef.on('child_changed', (snapshot) => {
+                    const id = snapshot.key;
+                    const data = snapshot.val();
+                    
+                    if (id !== playerId && otherPlayers.has(id)) {
+                        const player = otherPlayers.get(id);
+                        player.targetPos.set(data.position.x, data.position.y, data.position.z);
+                        player.walkTime = data.walkTime || 0;
+                        player.moving = data.moving || false;
+                        player.lastUpdate = Date.now();
+                    }
+                });
+                
+                // Удаляем отключившихся игроков
+                playersRef.on('child_removed', (snapshot) => {
+                    const id = snapshot.key;
+                    if (otherPlayers.has(id)) {
+                        const player = otherPlayers.get(id);
                         scene.remove(player.model);
                         otherPlayers.delete(id);
                     }
                 });
                 
-                Object.keys(storedPlayers).forEach(id => {
-                    if (id !== playerId) {
-                        const data = storedPlayers[id];
-                        
-                        if (!otherPlayers.has(id)) {
-                            const model = createPlayerModel();
-                            model.position.set(data.position.x, data.position.y, data.position.z);
-                            scene.add(model);
-                            
-                            otherPlayers.set(id, {
-                                model,
-                                targetPos: new THREE.Vector3(data.position.x, data.position.y, data.position.z),
-                                walkTime: data.walkTime,
-                                moving: data.moving
-                            });
-                        } else {
-                            const player = otherPlayers.get(id);
-                            player.targetPos.set(data.position.x, data.position.y, data.position.z);
-                            player.walkTime = data.walkTime;
-                            player.moving = data.moving;
+                // Очистка неактивных игроков
+                setInterval(() => {
+                    const now = Date.now();
+                    otherPlayers.forEach((player, id) => {
+                        if (now - player.lastUpdate > 5000) {
+                            scene.remove(player.model);
+                            otherPlayers.delete(id);
                         }
-                    }
+                    });
+                    
+                    // Обновляем счетчик игроков
+                    playersRef.once('value', (snapshot) => {
+                        document.getElementById('player-counter').textContent = snapshot.numChildren();
+                    });
+                }, 1000);
+                
+                // Периодически обновляем свою позицию
+                setInterval(() => {
+                    const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
+                    
+                    playersRef.child(playerId).update({
+                        position: {
+                            x: localPlayerBody.position.x,
+                            y: localPlayerBody.position.y,
+                            z: localPlayerBody.position.z
+                        },
+                        walkTime: walkTime,
+                        moving: moving,
+                        lastSeen: Date.now()
+                    });
+                }, 100);
+                
+                // При закрытии страницы
+                window.addEventListener('beforeunload', () => {
+                    playersRef.child(playerId).remove();
                 });
-                
-                const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
-                
-                const currentPlayers = getStoredPlayers();
-                if (currentPlayers[playerId]) {
-                    currentPlayers[playerId].position = {
-                        x: localPlayerBody.position.x,
-                        y: localPlayerBody.position.y,
-                        z: localPlayerBody.position.z
-                    };
-                    currentPlayers[playerId].walkTime = walkTime;
-                    currentPlayers[playerId].moving = moving;
-                    currentPlayers[playerId].lastSeen = Date.now();
-                    savePlayers(currentPlayers);
-                }
-                
-                document.getElementById('player-counter').textContent = Object.keys(storedPlayers).length;
-            }, 50);
-            
-            // Очистка старых
-            setInterval(() => {
-                const players = getStoredPlayers();
-                let changed = false;
-                
-                Object.keys(players).forEach(id => {
-                    if (Date.now() - players[id].lastSeen > 3000) {
-                        delete players[id];
-                        changed = true;
-                    }
-                });
-                
-                if (changed) savePlayers(players);
-            }, 1000);
+            }
 
             // ==================== МОБИЛЬНОЕ УПРАВЛЕНИЕ ====================
             
-            // Джойстик (левый палец)
+            // Джойстик
             const joystick = document.getElementById('touch-joystick');
             const handle = document.getElementById('joystick-handle');
             let joystickActive = false;
@@ -552,7 +607,7 @@
                 jumpBtn.classList.remove('active');
             });
             
-            // ========== ЖЕСТЫ КАМЕРЫ - ИСПРАВЛЕНО ==========
+            // Жесты камеры
             const gestureArea = document.getElementById('gesture-area');
             
             let gestureTouches = [];
@@ -574,7 +629,7 @@
                 const prevTouches = [...gestureTouches];
                 updateTouches(e);
                 
-                // Пинч-зум (2 пальца)
+                // Пинч-зум
                 if (gestureTouches.length === 2 && prevTouches.length === 2) {
                     const dx = gestureTouches[0].clientX - gestureTouches[1].clientX;
                     const dy = gestureTouches[0].clientY - gestureTouches[1].clientY;
@@ -589,20 +644,15 @@
                     cameraDistance = Math.max(minDistance, Math.min(maxDistance, cameraDistance));
                 }
                 
-                // Поворот камеры (1 палец) - ИСПРАВЛЕНО!
+                // Поворот камеры
                 if (gestureTouches.length === 1 && lastSingleTouch) {
                     const touch = gestureTouches[0];
                     
                     const deltaX = touch.clientX - lastSingleTouch.x;
                     const deltaY = touch.clientY - lastSingleTouch.y;
                     
-                    // ГОРИЗОНТАЛЬ: палец вправо -> камера вправо (yaw -)
                     yawObject.rotation.y -= deltaX * 0.005;
-                    
-                    // ВЕРТИКАЛЬ: палец вверх -> камера вверх (pitch -)
                     pitchObject.rotation.x -= deltaY * 0.003;
-                    
-                    // Ограничиваем вертикальный угол
                     pitchObject.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitchObject.rotation.x));
                     
                     lastSingleTouch = {
@@ -702,7 +752,7 @@
 
                 world.step(1 / 60, delta, 3);
 
-                // ========== СМЕРТЬ ==========
+                // Смерть
                 let dead = false;
 
                 if (localPlayerBody.position.y < deathHeight) {
@@ -740,19 +790,17 @@
                     respawn();
                 }
 
-                // ========== ДВИЖЕНИЕ ==========
+                // Движение
                 if (!dead) {
                     const moveSpeed = 12;
                     
                     let moveX = 0, moveZ = 0;
                     
-                    // Клавиатура (ПК)
                     if (keys["KeyW"]) moveZ += 1;
                     if (keys["KeyS"]) moveZ -= 1;
                     if (keys["KeyA"]) moveX -= 1;
                     if (keys["KeyD"]) moveX += 1;
                     
-                    // Джойстик (телефон) - ИСПРАВЛЕНО
                     if (joystickActive) {
                         moveX += joystickVector.x;
                         moveZ += -joystickVector.y;
@@ -763,12 +811,10 @@
                         moveX /= len;
                         moveZ /= len;
                         
-                        // Поворачиваем игрока в направлении движения
                         const angle = Math.atan2(moveX, moveZ);
                         localModel.rotation.y = angle;
                     }
 
-                    // Движение относительно камеры
                     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
                     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
                     
@@ -780,7 +826,6 @@
                     localPlayerBody.velocity.x = (forward.x * moveZ + right.x * moveX) * moveSpeed;
                     localPlayerBody.velocity.z = (forward.z * moveZ + right.z * moveX) * moveSpeed;
 
-                    // Прыжок
                     const shouldJump = keys["Space"] || jumpPressed;
                     if (shouldJump) {
                         if (Math.abs(localPlayerBody.velocity.y) < 0.1) {
@@ -793,7 +838,7 @@
                     }
                 }
 
-                // ========== АНИМАЦИЯ ==========
+                // Анимация
                 const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
                 if (moving) {
                     walkTime += delta * 12;
@@ -805,7 +850,7 @@
                     animatePlayer(player.model, player.walkTime || 0, player.moving || false);
                 });
 
-                // ========== КАМЕРА ==========
+                // Камера
                 const firstPerson = cameraDistance <= minDistance + 0.2;
                 if (firstPerson) {
                     camera.position.set(0, 3, 0.5);
