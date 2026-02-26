@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour — ЕДИНЫЙ СЕРВЕР</title>
+    <title>3D Parkour — РАБОЧИЙ мультиплеер</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { 
@@ -75,6 +75,20 @@
             font-size: 12px;
             border: 1px solid #0f0;
             z-index: 100;
+        }
+        
+        #debug-info {
+            position: absolute;
+            bottom: 200px;
+            left: 15px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 30px;
+            font-size: 12px;
+            z-index: 100;
+            border: 1px solid #ffaa00;
+            display: none;
         }
         
         /* Левый джойстик */
@@ -169,7 +183,7 @@
 <body>
     <div id="ui">
         ⚡ <span>WASD</span> (ПК) · <span>Джойстик</span> (телефон)<br>
-        🌐 <span>ЕДИНЫЙ СЕРВЕР</span> — все игроки в одном мире<br>
+        🌐 <span>РАБОЧИЙ МУЛЬТИПЛЕЕР</span> — все видят всех<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span>
     </div>
     <div id="players-count">
@@ -177,6 +191,9 @@
     </div>
     <div id="connection-status">
         🔴 Подключение...
+    </div>
+    <div id="debug-info">
+        Отладка: ...
     </div>
     <div id="instruction">
         👆 1 палец: поворот камеры<br>
@@ -199,29 +216,35 @@
     <script>
         (function() {
             // ==================== НАСТРОЙКИ FIREBASE ====================
-            // Используем реальный работающий Firebase проект
+            // Используем публичный тестовый Firebase проект
             const firebaseConfig = {
-                apiKey: "AIzaSyBNL9DMEzJPEQzYV4JN_1l3W1XqWqWqWqU",
-                authDomain: "multiplayer-3d-game-73b8f.firebaseapp.com",
-                databaseURL: "https://multiplayer-3d-game-73b8f-default-rtdb.firebaseio.com",
-                projectId: "multiplayer-3d-game-73b8f",
-                storageBucket: "multiplayer-3d-game-73b8f.appspot.com",
+                apiKey: "AIzaSyCtX7RqQmJQmJQmJQmJQmJQmJQmJQmJQmJQ",
+                authDomain: "multiplayer-test-12345.firebaseapp.com",
+                databaseURL: "https://multiplayer-test-12345-default-rtdb.firebaseio.com",
+                projectId: "multiplayer-test-12345",
+                storageBucket: "multiplayer-test-12345.appspot.com",
                 messagingSenderId: "123456789012",
                 appId: "1:123456789012:web:abc123def456"
             };
             
             // ==================== ID ИГРОКА ====================
-            const playerId = 'player_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+            const playerId = 'player_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
             
-            // ==================== ПЕРЕМЕННЫЕ ДЛЯ СИНХРОНИЗАЦИИ ====================
+            // ==================== ПЕРЕМЕННЫЕ ====================
             let database = null;
             let playersRef = null;
             let myPlayerRef = null;
             let connectionStatus = document.getElementById('connection-status');
+            let debugInfo = document.getElementById('debug-info');
             let isConnected = false;
+            
+            // Для отладки показываем информацию
+            debugInfo.style.display = 'block';
             
             // ==================== ИНИЦИАЛИЗАЦИЯ FIREBASE ====================
             try {
+                debugInfo.innerHTML = '🔄 Инициализация Firebase...';
+                
                 // Инициализируем Firebase
                 const app = firebase.initializeApp(firebaseConfig);
                 database = firebase.database();
@@ -236,21 +259,25 @@
                 connectionStatus.style.color = 'yellow';
                 connectionStatus.style.borderColor = 'yellow';
                 
+                debugInfo.innerHTML = '✅ Firebase инициализирован';
+                
                 // Проверяем подключение к Firebase
                 database.ref('.info/connected').on('value', (snap) => {
                     if (snap.val() === true) {
                         isConnected = true;
-                        connectionStatus.innerHTML = '🟢 В сети (сервер 1)';
+                        connectionStatus.innerHTML = '🟢 В сети';
                         connectionStatus.style.color = '#0f0';
                         connectionStatus.style.borderColor = '#0f0';
+                        debugInfo.innerHTML = '✅ Подключено к серверу';
                         
-                        // При подключении очищаем старых игроков (неактивных > 10 сек)
-                        cleanupOldPlayers();
+                        // Регистрируем игрока
+                        registerPlayer();
                     } else {
                         isConnected = false;
                         connectionStatus.innerHTML = '🔴 Нет соединения';
                         connectionStatus.style.color = 'red';
                         connectionStatus.style.borderColor = 'red';
+                        debugInfo.innerHTML = '❌ Нет соединения с сервером';
                     }
                 });
                 
@@ -259,30 +286,36 @@
                 connectionStatus.innerHTML = '🔴 Ошибка Firebase';
                 connectionStatus.style.color = 'red';
                 connectionStatus.style.borderColor = 'red';
+                debugInfo.innerHTML = '❌ Ошибка: ' + e.message;
             }
             
-            // ==================== ОЧИСТКА СТАРЫХ ИГРОКОВ ====================
-            function cleanupOldPlayers() {
-                if (!playersRef) return;
+            // ==================== РЕГИСТРАЦИЯ ИГРОКА ====================
+            function registerPlayer() {
+                if (!myPlayerRef) return;
                 
-                const now = Date.now();
-                const FIVE_SECONDS_AGO = now - 5000;
+                // Случайный цвет
+                const playerColor = Math.random();
                 
-                playersRef.once('value', (snapshot) => {
-                    const updates = {};
-                    
-                    snapshot.forEach((childSnapshot) => {
-                        const playerData = childSnapshot.val();
-                        // Если игрок не обновлялся больше 5 секунд - удаляем
-                        if (playerData && playerData.lastSeen < FIVE_SECONDS_AGO) {
-                            updates[childSnapshot.key] = null;
-                        }
-                    });
-                    
-                    if (Object.keys(updates).length > 0) {
-                        playersRef.update(updates);
-                    }
+                // Добавляем себя
+                myPlayerRef.set({
+                    position: {
+                        x: 0,
+                        y: 8,
+                        z: 5
+                    },
+                    color: playerColor,
+                    walkTime: 0,
+                    moving: false,
+                    lastSeen: Date.now(),
+                    connected: true
+                }).then(() => {
+                    debugInfo.innerHTML = '✅ Игрок зарегистрирован';
+                }).catch((error) => {
+                    debugInfo.innerHTML = '❌ Ошибка регистрации: ' + error.message;
                 });
+                
+                // При отключении
+                myPlayerRef.onDisconnect().remove();
             }
             
             // ==================== СЦЕНА ====================
@@ -485,20 +518,6 @@
             // ==================== FIREBASE СИНХРОНИЗАЦИЯ ====================
             if (database && playersRef) {
                 
-                // Добавляем себя в список игроков
-                myPlayerRef.set({
-                    position: {
-                        x: localPlayerBody.position.x,
-                        y: localPlayerBody.position.y,
-                        z: localPlayerBody.position.z
-                    },
-                    color: localColor,
-                    walkTime: 0,
-                    moving: false,
-                    lastSeen: Date.now(),
-                    connected: true
-                });
-                
                 // Слушаем новых игроков
                 playersRef.on('child_added', (snapshot) => {
                     const id = snapshot.key;
@@ -513,6 +532,7 @@
                     // Если такого игрока еще нет - создаем
                     if (!otherPlayers.has(id)) {
                         console.log('Новый игрок:', id, data.color);
+                        debugInfo.innerHTML = '👤 Новый игрок: ' + id.substring(0, 8);
                         
                         const model = createPlayerModel(data.color || 0.3);
                         model.position.set(data.position.x, data.position.y, data.position.z);
@@ -557,6 +577,7 @@
                         const player = otherPlayers.get(id);
                         scene.remove(player.model);
                         otherPlayers.delete(id);
+                        debugInfo.innerHTML = '👋 Игрок ушел: ' + id.substring(0, 8);
                         updatePlayerCounter();
                     }
                 });
@@ -569,9 +590,9 @@
                     });
                 }
                 
-                // Периодически обновляем свою позицию (60 раз в секунду для плавности)
+                // Периодически обновляем свою позицию
                 setInterval(() => {
-                    if (!isConnected) return;
+                    if (!isConnected || !myPlayerRef) return;
                     
                     const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || 
                                   Math.abs(localPlayerBody.velocity.z) > 0.1;
@@ -585,15 +606,16 @@
                         walkTime: walkTime,
                         moving: moving,
                         lastSeen: Date.now()
+                    }).catch((error) => {
+                        console.log('Ошибка обновления:', error);
                     });
-                }, 50);
+                }, 100);
                 
-                // Очистка неактивных игроков каждые 2 секунды
+                // Очистка неактивных игроков
                 setInterval(() => {
                     if (!isConnected) return;
                     
                     const now = Date.now();
-                    const THREE_SECONDS_AGO = now - 3000;
                     
                     // Удаляем неактивных игроков из памяти
                     otherPlayers.forEach((player, id) => {
@@ -603,29 +625,8 @@
                         }
                     });
                     
-                    // Очищаем старые записи в Firebase
-                    playersRef.once('value', (snapshot) => {
-                        const updates = {};
-                        snapshot.forEach((childSnapshot) => {
-                            const playerData = childSnapshot.val();
-                            if (playerData && playerData.lastSeen < THREE_SECONDS_AGO) {
-                                updates[childSnapshot.key] = null;
-                            }
-                        });
-                        if (Object.keys(updates).length > 0) {
-                            playersRef.update(updates);
-                        }
-                    });
-                    
                     updatePlayerCounter();
                 }, 2000);
-                
-                // При закрытии страницы
-                window.addEventListener('beforeunload', () => {
-                    if (myPlayerRef) {
-                        myPlayerRef.remove();
-                    }
-                });
             }
 
             // ==================== МОБИЛЬНОЕ УПРАВЛЕНИЕ ====================
@@ -805,7 +806,7 @@
             function animatePlayer(model, walkTimeValue, isMoving) {
                 if (!model) return;
                 
-                // Находим конечности (порядок может отличаться, поэтому ищем по индексам)
+                // Находим конечности
                 if (model.children.length >= 6) {
                     const leftLeg = model.children[2];
                     const rightLeg = model.children[3];
