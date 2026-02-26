@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour Game — Быстрая камера и никакого трения</title>
+    <title>3D Parkour Game — Мультиплеер (демо)</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
         #ui {
@@ -21,19 +21,30 @@
             z-index: 100;
         }
         #ui span { color: #ffaa00; font-weight: bold; }
-        #speed-indicator {
+        #players-count {
             position: absolute;
             bottom: 20px;
             right: 20px;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
             color: #0ff;
-            padding: 8px 15px;
+            padding: 8px 18px;
             border-radius: 20px;
             font-family: monospace;
             font-size: 16px;
             border: 1px solid #0ff;
-            box-shadow: 0 0 10px rgba(0,255,255,0.3);
+            box-shadow: 0 0 15px rgba(0,255,255,0.5);
             z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.5);
+            color: #aaa;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 13px;
         }
     </style>
 </head>
@@ -42,10 +53,13 @@
         ⚡ <span>WASD</span> — движение · <span>Пробел</span> — прыжок (кд 2 сек)<br>
         🖱️ <span>ПКМ (быстро)</span> — вращение камеры · <span>Колёсико</span> — зум<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span> (мгновенно)<br>
-        🟦 По центру безопасная дорожка
+        👥 <span style="color:#88ccff">Синие фигурки</span> — другие игроки (в демо спавнятся боты)
     </div>
-    <div id="speed-indicator">
-        ⚡ Скорость: нормальная (трение убрано)
+    <div id="players-count">
+        👥 Игроков онлайн: <span id="player-counter">1</span>
+    </div>
+    <div id="instructions">
+        💡 Демо мультиплеера: другие игроки — боты, бегают случайно
     </div>
 
     <!-- Подключаем библиотеки -->
@@ -94,16 +108,12 @@
             const world = new CANNON.World();
             world.gravity.set(0, -9.82, 0);
 
-            // Материалы
             const groundMaterial = new CANNON.Material("groundMaterial");
             const playerMaterial = new CANNON.Material("playerMaterial");
             
-            // ВАЖНО: Убираем трение полностью!
             const contactMaterial = new CANNON.ContactMaterial(playerMaterial, groundMaterial, {
-                friction: 0.0,        // Абсолютно никакого трения
+                friction: 0.0,
                 restitution: 0.0,
-                contactEquationStiffness: 1e7, // Жёсткость контакта
-                contactEquationRelaxation: 3
             });
             world.addContactMaterial(contactMaterial);
             world.defaultContactMaterial = contactMaterial;
@@ -113,7 +123,7 @@
 
             // ==================== СОЗДАНИЕ УРОВНЯ ====================
             
-            // Земля под всем
+            // Земля
             const groundMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(30, 2, 30),
                 new THREE.MeshStandardMaterial({ color: 0x3a4a5a })
@@ -127,7 +137,7 @@
             groundBody.position.copy(groundMesh.position);
             world.addBody(groundBody);
 
-            // Уровень 1: цветные платформы
+            // Уровень 1
             for (let i = 0; i < 15; i++) {
                 const platformMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(8, 1, 8),
@@ -144,7 +154,7 @@
                 world.addBody(platformBody);
             }
 
-            // Уровень 2: серые платформы с красными блоками
+            // Уровень 2 с красными блоками
             const startZ = -160;
             for (let i = 0; i < 20; i++) {
                 const platformMesh = new THREE.Mesh(
@@ -176,7 +186,7 @@
                         const deathBody = new CANNON.Body({ 
                             mass: 0,
                             material: groundMaterial,
-                            collisionResponse: false // Не влияет на физику
+                            collisionResponse: false
                         });
                         deathBody.addShape(new CANNON.Box(new CANNON.Vec3(1, 0.5, 1)));
                         deathBody.position.copy(deathMesh.position);
@@ -187,58 +197,119 @@
                 }
             }
 
-            // ==================== ИГРОК ====================
-            const playerBody = new CANNON.Body({
+            // ==================== ИГРОК (ЛОКАЛЬНЫЙ) ====================
+            const localPlayerBody = new CANNON.Body({
                 mass: 5,
                 material: playerMaterial,
-                linearDamping: 0.0,        // Убираем damping полностью - теперь нет замедления!
+                linearDamping: 0.0,
                 angularDamping: 0.0,
                 fixedRotation: true,
                 collisionResponse: true
             });
-            playerBody.addShape(new CANNON.Sphere(0.9));
-            playerBody.position.set(0, 8, 5);
-            world.addBody(playerBody);
+            localPlayerBody.addShape(new CANNON.Sphere(0.9));
+            localPlayerBody.position.set(0, 8, 5);
+            world.addBody(localPlayerBody);
 
             const spawnPosition = new CANNON.Vec3(0, 8, 5);
 
-            // Визуальная модель
-            const playerGroup = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3399ff });
+            // Визуальная модель локального игрока
+            const localPlayerGroup = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3399ff }); // Синий
             const limbMat = new THREE.MeshStandardMaterial({ color: 0x2255aa });
             const headMat = new THREE.MeshStandardMaterial({ color: 0xffccaa });
 
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), bodyMat);
-            torso.position.y = 1.6;
-            torso.castShadow = true;
-            playerGroup.add(torso);
+            function createPlayerModel(colorOffset = 0) {
+                const group = new THREE.Group();
+                
+                // Немного различаем игроков по цвету
+                const hue = 0.6 + colorOffset * 0.1; // Синий с небольшими вариациями
+                const mainColor = new THREE.Color().setHSL(hue, 0.9, 0.5);
+                const limbColor = new THREE.Color().setHSL(hue, 0.8, 0.3);
+                
+                const tBodyMat = new THREE.MeshStandardMaterial({ color: mainColor });
+                const tLimbMat = new THREE.MeshStandardMaterial({ color: limbColor });
+                const tHeadMat = new THREE.MeshStandardMaterial({ color: 0xffccaa });
 
-            const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), headMat);
-            head.position.y = 3;
-            head.castShadow = true;
-            playerGroup.add(head);
+                const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), tBodyMat);
+                torso.position.y = 1.6;
+                torso.castShadow = true;
+                group.add(torso);
 
-            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), limbMat);
-            leftLeg.position.set(-0.4, 0.2, 0);
-            leftLeg.castShadow = true;
-            playerGroup.add(leftLeg);
+                const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), tHeadMat);
+                head.position.y = 3;
+                head.castShadow = true;
+                group.add(head);
 
-            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), limbMat);
-            rightLeg.position.set(0.4, 0.2, 0);
-            rightLeg.castShadow = true;
-            playerGroup.add(rightLeg);
+                const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), tLimbMat);
+                leftLeg.position.set(-0.4, 0.2, 0);
+                leftLeg.castShadow = true;
+                group.add(leftLeg);
 
-            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), limbMat);
-            leftArm.position.set(-0.8, 1.8, 0);
-            leftArm.castShadow = true;
-            playerGroup.add(leftArm);
+                const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), tLimbMat);
+                rightLeg.position.set(0.4, 0.2, 0);
+                rightLeg.castShadow = true;
+                group.add(rightLeg);
 
-            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), limbMat);
-            rightArm.position.set(0.8, 1.8, 0);
-            rightArm.castShadow = true;
-            playerGroup.add(rightArm);
+                const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), tLimbMat);
+                leftArm.position.set(-0.8, 1.8, 0);
+                leftArm.castShadow = true;
+                group.add(leftArm);
 
-            scene.add(playerGroup);
+                const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), tLimbMat);
+                rightArm.position.set(0.8, 1.8, 0);
+                rightArm.castShadow = true;
+                group.add(rightArm);
+
+                return group;
+            }
+
+            // Создаём модель для локального игрока
+            const localModel = createPlayerModel(0);
+            scene.add(localModel);
+
+            // ==================== ДРУГИЕ ИГРОКИ (БОТЫ ДЛЯ ДЕМО) ====================
+            const otherPlayers = new Map(); // id -> { model, body, targetPosition, moveTimer }
+            
+            // Функция создания нового игрока-бота
+            function createBotPlayer(id) {
+                // Физическое тело бота (чтобы не проваливался, но не взаимодействовал с локальным)
+                const body = new CANNON.Body({
+                    mass: 5,
+                    material: playerMaterial,
+                    linearDamping: 0.5,
+                    fixedRotation: true,
+                    collisionResponse: false // Не взаимодействует с локальным игроком
+                });
+                body.addShape(new CANNON.Sphere(0.9));
+                
+                // Случайная позиция на платформах
+                const platformIndex = Math.floor(Math.random() * 35); // 0-34 платформы
+                const zPos = platformIndex < 15 ? -platformIndex * 10 : startZ - (platformIndex - 15) * 10;
+                body.position.set((Math.random() - 0.5) * 4, 8, zPos + 5); // Немного случайно по x
+                
+                world.addBody(body);
+
+                // Визуальная модель (с небольшим отличием по цвету)
+                const model = createPlayerModel(id * 0.1);
+                scene.add(model);
+
+                // Таймер для смены направления
+                const moveTimer = {
+                    timeLeft: Math.random() * 3 + 1,
+                    targetX: (Math.random() - 0.5) * 4,
+                    targetZ: zPos + 5 + (Math.random() - 0.5) * 5
+                };
+
+                otherPlayers.set(id, { body, model, moveTimer, id });
+            }
+
+            // Создаём 5 ботов для демонстрации
+            for (let i = 1; i <= 5; i++) {
+                createBotPlayer(i);
+            }
+
+            // Обновляем счётчик игроков
+            document.getElementById('player-counter').textContent = 1 + otherPlayers.size;
 
             // ==================== УПРАВЛЕНИЕ ====================
             const keys = {};
@@ -247,8 +318,7 @@
             document.addEventListener("contextmenu", (e) => e.preventDefault());
 
             let mouseDown = false;
-            // УВЕЛИЧИВАЕМ ЧУВСТВИТЕЛЬНОСТЬ КАМЕРЫ В 3 РАЗА
-            const cameraSensitivity = 0.006; // Было 0.002, стало 0.006
+            const cameraSensitivity = 0.006;
 
             document.addEventListener("mousedown", (e) => {
                 if (e.button === 2) mouseDown = true;
@@ -268,9 +338,9 @@
             let lastJumpTime = -Infinity;
 
             function respawn() {
-                playerBody.position.copy(spawnPosition);
-                playerBody.velocity.set(0, 0, 0);
-                playerBody.angularVelocity.set(0, 0, 0);
+                localPlayerBody.position.copy(spawnPosition);
+                localPlayerBody.velocity.set(0, 0, 0);
+                localPlayerBody.angularVelocity.set(0, 0, 0);
             }
 
             // ==================== ИГРОВОЙ ЦИКЛ ====================
@@ -286,15 +356,15 @@
 
                 world.step(1 / 60, delta, 3);
 
-                // ========== ПРОВЕРКА НА СМЕРТЬ ==========
+                // ========== ПРОВЕРКА НА СМЕРТЬ (локальный игрок) ==========
                 let dead = false;
 
-                if (playerBody.position.y < deathHeight) {
+                if (localPlayerBody.position.y < deathHeight) {
                     dead = true;
                 }
 
                 if (!dead) {
-                    const playerPos = playerBody.position;
+                    const playerPos = localPlayerBody.position;
                     const playerRadius = 0.9;
 
                     for (let block of deathBlocks) {
@@ -326,14 +396,13 @@
                     respawn();
                 }
 
-                // ========== УПРАВЛЕНИЕ ДВИЖЕНИЕМ ==========
+                // ========== УПРАВЛЕНИЕ ЛОКАЛЬНЫМ ИГРОКОМ ==========
                 if (!dead) {
-                    const moveSpeed = 12; // Увеличил скорость для более динамичной игры
+                    const moveSpeed = 12;
 
                     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
                     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
 
-                    // Напрямую задаём скорость, без демпфирования
                     let moveX = 0, moveZ = 0;
                     
                     if (keys["KeyW"]) {
@@ -353,59 +422,132 @@
                         moveZ += right.z;
                     }
 
-                    // Нормализуем диагональную скорость
                     if (moveX !== 0 || moveZ !== 0) {
                         const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
                         moveX /= len;
                         moveZ /= len;
                     }
 
-                    // Применяем скорость (полный контроль, никакого трения)
-                    playerBody.velocity.x = moveX * moveSpeed;
-                    playerBody.velocity.z = moveZ * moveSpeed;
+                    localPlayerBody.velocity.x = moveX * moveSpeed;
+                    localPlayerBody.velocity.z = moveZ * moveSpeed;
 
-                    // Прыжок
                     if (keys["Space"]) {
-                        // Простая проверка: если стоим на земле (скорость вниз отсутствует)
-                        if (Math.abs(playerBody.velocity.y) < 0.1) {
+                        if (Math.abs(localPlayerBody.velocity.y) < 0.1) {
                             const currentTime = elapsedTime;
                             if (currentTime - lastJumpTime >= jumpCooldown) {
-                                playerBody.velocity.y = 10;
+                                localPlayerBody.velocity.y = 10;
                                 lastJumpTime = currentTime;
                             }
                         }
                     }
                 }
 
-                // ========== АНИМАЦИЯ ==========
-                const moving = Math.abs(playerBody.velocity.x) > 0.1 || Math.abs(playerBody.velocity.z) > 0.1;
+                // ========== ОБНОВЛЕНИЕ БОТОВ ==========
+                for (let [id, player] of otherPlayers) {
+                    const body = player.body;
+                    const model = player.model;
+                    const timer = player.moveTimer;
+
+                    // Простой AI: двигаться к цели, иногда менять цель
+                    timer.timeLeft -= delta;
+                    
+                    if (timer.timeLeft <= 0) {
+                        // Новая цель
+                        timer.targetX = (Math.random() - 0.5) * 5;
+                        timer.targetZ = body.position.z + (Math.random() - 0.5) * 8;
+                        timer.timeLeft = Math.random() * 4 + 2;
+                    }
+
+                    // Движение к цели
+                    const dx = timer.targetX - body.position.x;
+                    const dz = timer.targetZ - body.position.z;
+                    const dist = Math.sqrt(dx*dx + dz*dz);
+                    
+                    if (dist > 0.5) {
+                        const speed = 5;
+                        body.velocity.x = (dx / dist) * speed;
+                        body.velocity.z = (dz / dist) * speed;
+                    } else {
+                        body.velocity.x = 0;
+                        body.velocity.z = 0;
+                    }
+
+                    // Случайные прыжки ботов
+                    if (Math.random() < 0.005) { // Изредка прыгают
+                        if (Math.abs(body.velocity.y) < 0.1) {
+                            body.velocity.y = 8;
+                        }
+                    }
+
+                    // Проверка смерти ботов (для реализма - возрождаем)
+                    if (body.position.y < deathHeight) {
+                        body.position.set(0, 8, 5);
+                        body.velocity.set(0, 0, 0);
+                    }
+
+                    // Проверка на красные блоки для ботов
+                    const playerPos = body.position;
+                    const playerRadius = 0.9;
+                    for (let block of deathBlocks) {
+                        const blockPos = block.position;
+                        const halfExtents = new CANNON.Vec3(1, 0.5, 1);
+                        
+                        const dxB = playerPos.x - blockPos.x;
+                        const dyB = playerPos.y - blockPos.y;
+                        const dzB = playerPos.z - blockPos.z;
+
+                        const closestX = Math.max(-halfExtents.x, Math.min(halfExtents.x, dxB));
+                        const closestY = Math.max(-halfExtents.y, Math.min(halfExtents.y, dyB));
+                        const closestZ = Math.max(-halfExtents.z, Math.min(halfExtents.z, dzB));
+
+                        const distX = dxB - closestX;
+                        const distY = dyB - closestY;
+                        const distZ = dzB - closestZ;
+
+                        const distSq = distX*distX + distY*distY + distZ*distZ;
+                        
+                        if (distSq < playerRadius * playerRadius) {
+                            body.position.set(0, 8, 5);
+                            body.velocity.set(0, 0, 0);
+                            break;
+                        }
+                    }
+
+                    // Обновляем позицию модели бота
+                    model.position.copy(body.position);
+                }
+
+                // ========== АНИМАЦИЯ ХОДЬБЫ (локальный) ==========
+                const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
                 if (moving) {
                     walkTime += delta * 12;
                     const swing = Math.sin(walkTime) * 0.7;
-                    leftLeg.rotation.x = swing;
-                    rightLeg.rotation.x = -swing;
-                    leftArm.rotation.x = -swing;
-                    rightArm.rotation.x = swing;
+                    
+                    // Анимируем конечности локальной модели
+                    localModel.children[2].rotation.x = swing; // leftLeg
+                    localModel.children[3].rotation.x = -swing; // rightLeg
+                    localModel.children[4].rotation.x = -swing; // leftArm
+                    localModel.children[5].rotation.x = swing; // rightArm
                 } else {
-                    leftLeg.rotation.x = 0;
-                    rightLeg.rotation.x = 0;
-                    leftArm.rotation.x = 0;
-                    rightArm.rotation.x = 0;
+                    localModel.children[2].rotation.x = 0;
+                    localModel.children[3].rotation.x = 0;
+                    localModel.children[4].rotation.x = 0;
+                    localModel.children[5].rotation.x = 0;
                 }
 
                 // ========== КАМЕРА ==========
                 const firstPerson = cameraDistance <= minDistance + 0.2;
                 if (firstPerson) {
                     camera.position.set(0, 3, 0);
-                    playerGroup.visible = false;
+                    localModel.visible = false;
                 } else {
                     camera.position.set(0, 2.5, cameraDistance);
-                    playerGroup.visible = true;
+                    localModel.visible = true;
                 }
 
-                playerGroup.position.copy(playerBody.position);
-                playerGroup.rotation.y = yawObject.rotation.y;
-                yawObject.position.copy(playerBody.position);
+                localModel.position.copy(localPlayerBody.position);
+                localModel.rotation.y = yawObject.rotation.y;
+                yawObject.position.copy(localPlayerBody.position);
 
                 renderer.render(scene, camera);
             }
