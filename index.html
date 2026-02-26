@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour Game — Исправленное управление</title>
+    <title>3D Parkour Game — ИСПРАВЛЕНО: W вперёд, S назад</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { 
@@ -189,17 +189,16 @@
 </head>
 <body>
     <div id="ui">
-        ⚡ <span>WASD</span> (комп) · <span>Джойстик</span> (телефон)<br>
-        🖱️ <span>ПКМ + движение</span> или <span>кнопка камеры</span> — поворот<br>
-        🖱️ <span>Колёсико</span> — зум · <span>Кнопки +/‑</span> — для телефона<br>
-        ❌ <span style="color:#ff5555">Красные блоки = смерть</span><br>
-        👥 <span style="color:#88ccff">Управление исправлено</span>
+        ⚡ <span>WASD</span> — W вперёд, S назад, A/D влево/вправо<br>
+        🖱️ <span>ПКМ + движение</span> — поворот камеры<br>
+        🖱️ <span>Колёсико</span> — зум<br>
+        ❌ <span style="color:#ff5555">Красные блоки = смерть</span>
     </div>
     <div id="players-count">
         👥 <span id="player-counter">1</span>
     </div>
     <div id="instruction">
-        💡 WASD — вперёд/назад/влево/вправо
+        💡 Управление ИСПРАВЛЕНО: W вперёд
     </div>
 
     <!-- Сенсорное управление -->
@@ -248,7 +247,7 @@
             const maxDistance = 15;
             camera.position.set(0, 2.5, cameraDistance);
 
-            // ==================== ЗУМ КОЛЁСИКОМ (ДЛЯ ПК) ====================
+            // Зум колёсиком
             document.addEventListener("wheel", (e) => {
                 e.preventDefault();
                 cameraDistance += e.deltaY * 0.01;
@@ -420,11 +419,11 @@
             const otherPlayers = new Map();
             
             // ==================== LOCALSTORAGE ====================
-            const STORAGE_KEY = 'mobile_multiplayer_fixed2';
+            const STORAGE_KEY = 'mobile_multiplayer_fixed3';
             
-            if (!localStorage.getItem('mobile_fixed2_init')) {
+            if (!localStorage.getItem('mobile_fixed3_init')) {
                 localStorage.removeItem(STORAGE_KEY);
-                localStorage.setItem('mobile_fixed2_init', 'true');
+                localStorage.setItem('mobile_fixed3_init', 'true');
             }
             
             function getStoredPlayers() {
@@ -750,16 +749,16 @@
                     
                     let moveX = 0, moveZ = 0;
                     
-                    // Клавиатура (ПК) - ИСПРАВЛЕНО: W вперёд, S назад
-                    if (keys["KeyW"]) moveZ -= 1;  // W - вперёд
-                    if (keys["KeyS"]) moveZ += 1;  // S - назад
+                    // КЛАВИАТУРА (ПК) - ИСПРАВЛЕНО!
+                    if (keys["KeyW"]) moveZ += 1;  // W - вперёд (теперь +)
+                    if (keys["KeyS"]) moveZ -= 1;  // S - назад (теперь -)
                     if (keys["KeyA"]) moveX -= 1;  // A - влево
                     if (keys["KeyD"]) moveX += 1;  // D - вправо
                     
-                    // Джойстик (телефон) - ИСПРАВЛЕНО: вверх джойстика = вперёд
+                    // ДЖОЙСТИК (телефон) - тоже исправлено
                     if (joystickActive) {
                         moveX += joystickVector.x;
-                        moveZ -= joystickVector.y; // Минус, потому что вверх джойстика = отрицательный Y
+                        moveZ += joystickVector.y; // Теперь +, потому что вверх джойстика = вперед
                     }
                     
                     if (moveX !== 0 || moveZ !== 0) {
@@ -789,7 +788,6 @@
                     // Прыжок
                     const shouldJump = keys["Space"] || jumpPressed;
                     if (shouldJump) {
-                        // Проверяем, стоит ли игрок на земле (небольшой допуск)
                         if (Math.abs(localPlayerBody.velocity.y) < 0.1) {
                             const currentTime = elapsedTime;
                             if (currentTime - lastJumpTime >= jumpCooldown) {
