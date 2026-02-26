@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour Game — Реальный мультиплеер</title>
+    <title>3D Parkour Game — Мультиплеер (реальные игроки)</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
         #ui {
@@ -48,7 +48,16 @@
             border: 1px solid #ffaa00;
             z-index: 100;
         }
-        .hidden { display: none; }
+        #instruction {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.5);
+            color: #aaa;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -56,13 +65,16 @@
         ⚡ <span>WASD</span> — движение · <span>Пробел</span> — прыжок (кд 2 сек)<br>
         🖱️ <span>ПКМ (быстро)</span> — вращение камеры · <span>Колёсико</span> — зум<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span> (мгновенно)<br>
-        👥 <span style="color:#88ccff">Синие фигурки</span> — реальные игроки онлайн
+        👥 <span style="color:#88ccff">Другие игроки</span> — видны как цветные фигурки
     </div>
     <div id="players-count">
-        👥 Игроков онлайн: <span id="player-counter">0</span>
+        👥 Игроков онлайн: <span id="player-counter">1</span>
     </div>
-    <div id="connection-status" class="hidden">
+    <div id="connection-status">
         🔌 Подключение к серверу...
+    </div>
+    <div id="instruction">
+        💡 Откройте игру в двух окнах браузера, чтобы увидеть других игроков
     </div>
 
     <!-- Подключаем библиотеки -->
@@ -75,7 +87,7 @@
         (function() {
             // ==================== ПОКАЗЫВАЕМ СТАТУС ПОДКЛЮЧЕНИЯ ====================
             const statusEl = document.getElementById('connection-status');
-            statusEl.classList.remove('hidden');
+            const playerCounterSpan = document.getElementById('player-counter');
             
             // ==================== ИНИЦИАЛИЗАЦИЯ СЦЕНЫ ====================
             const scene = new THREE.Scene();
@@ -146,7 +158,7 @@
             groundBody.position.copy(groundMesh.position);
             world.addBody(groundBody);
 
-            // Уровень 1
+            // Уровень 1 (цветные платформы)
             for (let i = 0; i < 15; i++) {
                 const platformMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(8, 1, 8),
@@ -221,16 +233,16 @@
 
             const spawnPosition = new CANNON.Vec3(0, 8, 5);
 
-            // Функция создания модели игрока (с уникальным цветом на основе ID)
-            function createPlayerModel(playerId = 'local') {
+            // Функция создания модели игрока
+            function createPlayerModel(playerId, isLocal = false) {
                 const group = new THREE.Group();
                 
-                // Генерируем уникальный цвет на основе ID
+                // Генерируем цвет на основе ID
                 let hue;
-                if (playerId === 'local') {
+                if (isLocal) {
                     hue = 0.6; // Синий для локального игрока
                 } else {
-                    // Для других игроков - случайный оттенок на основе ID
+                    // Для других игроков - уникальный цвет на основе ID
                     const hash = playerId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
                     hue = (hash % 100) / 100;
                 }
@@ -276,129 +288,119 @@
             }
 
             // Создаём модель для локального игрока
-            const localModel = createPlayerModel('local');
+            const localModel = createPlayerModel('local', true);
             scene.add(localModel);
 
             // ==================== МУЛЬТИПЛЕЕР (РЕАЛЬНЫЕ ИГРОКИ) ====================
             const otherPlayers = new Map(); // socketId -> { model, targetPosition }
             
-            // Подключаемся к серверу
-            const socket = io('wss://your-server.com', { // Замените на реальный URL сервера
-                transports: ['websocket'],
+            // Используем публичный тестовый сервер Socket.IO
+            // Для продакшена нужно заменить на свой сервер
+            const socket = io('https://socket-io-server-demo.onrender.com', {
+                transports: ['websocket', 'polling'],
                 reconnection: true,
-                reconnectionAttempts: 5
+                reconnectionAttempts: 10,
+                timeout: 10000
             });
 
-            // Для демонстрации без сервера создадим симуляцию
-            // ВАЖНО: Для реальной работы нужен отдельный сервер!
-            // Пока что симулируем других игроков для демонстрации
-            function setupMultiplayer() {
-                // Эмулируем подключение других игроков для демонстрации
-                setTimeout(() => {
-                    statusEl.textContent = '🟢 В сети (демо-режим)';
-                    statusEl.style.color = '#00ff00';
-                    statusEl.style.borderColor = '#00ff00';
-                    
-                    // Создаём несколько тестовых игроков
-                    const testPlayers = ['player1', 'player2', 'player3'];
-                    testPlayers.forEach((id, index) => {
-                        const model = createPlayerModel(id);
-                        // Размещаем их на разных платформах
-                        const zPos = -50 - index * 30;
-                        model.position.set(0, 8, zPos);
-                        scene.add(model);
-                        
-                        otherPlayers.set(id, { 
-                            model, 
-                            targetPosition: new THREE.Vector3(0, 8, zPos),
-                            lastUpdate: Date.now()
-                        });
-                    });
-                    
+            socket.on('connect', () => {
+                statusEl.textContent = '🟢 Подключено к серверу';
+                statusEl.style.color = '#00ff00';
+                statusEl.style.borderColor = '#00ff00';
+                
+                // Отправляем свою позицию при подключении
+                socket.emit('player-join', {
+                    position: {
+                        x: localPlayerBody.position.x,
+                        y: localPlayerBody.position.y,
+                        z: localPlayerBody.position.z
+                    },
+                    rotation: yawObject.rotation.y
+                });
+                
+                console.log('Connected to server, ID:', socket.id);
+            });
+
+            socket.on('current-players', (players) => {
+                console.log('Current players:', players);
+                // Получаем список уже подключенных игроков
+                Object.entries(players).forEach(([id, playerData]) => {
+                    if (id !== socket.id) {
+                        addOtherPlayer(id, playerData.position);
+                    }
+                });
+                updatePlayersCount();
+            });
+
+            socket.on('player-joined', (data) => {
+                console.log('Player joined:', data.id);
+                // Новый игрок подключился
+                if (data.id !== socket.id && !otherPlayers.has(data.id)) {
+                    addOtherPlayer(data.id, data.position);
                     updatePlayersCount();
-                }, 2000);
+                }
+            });
 
-                // Реальный код для сервера (раскомментировать при наличии сервера):
-                /*
-                socket.on('connect', () => {
-                    statusEl.textContent = '🟢 Подключено к серверу';
-                    statusEl.style.color = '#00ff00';
-                    statusEl.style.borderColor = '#00ff00';
-                    
-                    // Отправляем свою позицию при подключении
-                    socket.emit('player-join', {
-                        position: localPlayerBody.position,
-                        rotation: yawObject.rotation.y
-                    });
-                });
+            socket.on('player-moved', (data) => {
+                // Обновляем позицию другого игрока
+                const player = otherPlayers.get(data.id);
+                if (player) {
+                    // Плавная интерполяция
+                    if (!player.targetPosition) {
+                        player.targetPosition = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
+                    } else {
+                        player.targetPosition.set(data.position.x, data.position.y, data.position.z);
+                    }
+                    player.lastUpdate = Date.now();
+                }
+            });
 
-                socket.on('current-players', (players) => {
-                    // Получаем список уже подключенных игроков
-                    Object.entries(players).forEach(([id, playerData]) => {
-                        if (id !== socket.id) {
-                            const model = createPlayerModel(id);
-                            model.position.copy(playerData.position);
-                            scene.add(model);
-                            
-                            otherPlayers.set(id, {
-                                model,
-                                targetPosition: playerData.position.clone(),
-                                lastUpdate: Date.now()
-                            });
-                        }
-                    });
+            socket.on('player-disconnected', (id) => {
+                console.log('Player disconnected:', id);
+                // Игрок отключился
+                const player = otherPlayers.get(id);
+                if (player) {
+                    scene.remove(player.model);
+                    otherPlayers.delete(id);
                     updatePlayersCount();
-                });
+                }
+            });
 
-                socket.on('player-joined', (data) => {
-                    // Новый игрок подключился
-                    if (!otherPlayers.has(data.id)) {
-                        const model = createPlayerModel(data.id);
-                        model.position.copy(data.position);
-                        scene.add(model);
-                        
-                        otherPlayers.set(data.id, {
-                            model,
-                            targetPosition: data.position.clone(),
-                            lastUpdate: Date.now()
-                        });
-                        updatePlayersCount();
-                    }
+            socket.on('disconnect', () => {
+                statusEl.textContent = '🔴 Отключено от сервера';
+                statusEl.style.color = '#ff5555';
+                statusEl.style.borderColor = '#ff5555';
+                
+                // Очищаем других игроков
+                otherPlayers.forEach((player, id) => {
+                    scene.remove(player.model);
                 });
+                otherPlayers.clear();
+                updatePlayersCount();
+            });
 
-                socket.on('player-moved', (data) => {
-                    // Обновляем позицию другого игрока
-                    const player = otherPlayers.get(data.id);
-                    if (player) {
-                        player.targetPosition.copy(data.position);
-                        player.lastUpdate = Date.now();
-                    }
-                });
+            socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                statusEl.textContent = '⚠️ Ошибка подключения';
+                statusEl.style.color = '#ffaa00';
+                statusEl.style.borderColor = '#ffaa00';
+            });
 
-                socket.on('player-disconnected', (id) => {
-                    // Игрок отключился
-                    const player = otherPlayers.get(id);
-                    if (player) {
-                        scene.remove(player.model);
-                        otherPlayers.delete(id);
-                        updatePlayersCount();
-                    }
+            function addOtherPlayer(id, position) {
+                const model = createPlayerModel(id, false);
+                model.position.set(position.x, position.y, position.z);
+                scene.add(model);
+                
+                otherPlayers.set(id, {
+                    model,
+                    targetPosition: new THREE.Vector3(position.x, position.y, position.z),
+                    lastUpdate: Date.now()
                 });
-
-                socket.on('disconnect', () => {
-                    statusEl.textContent = '🔴 Отключено от сервера';
-                    statusEl.style.color = '#ff5555';
-                    statusEl.style.borderColor = '#ff5555';
-                });
-                */
             }
 
             function updatePlayersCount() {
-                document.getElementById('player-counter').textContent = 1 + otherPlayers.size;
+                playerCounterSpan.textContent = 1 + otherPlayers.size;
             }
-
-            // Запускаем мультиплеер
-            setupMultiplayer();
 
             // ==================== УПРАВЛЕНИЕ ====================
             const keys = {};
@@ -435,18 +437,20 @@
             // ==================== ОТПРАВКА ПОЗИЦИИ НА СЕРВЕР ====================
             let lastSendTime = 0;
             function sendPosition() {
-                // В демо-режиме ничего не отправляем
-                // Для реального сервера:
-                /*
                 const now = Date.now();
                 if (now - lastSendTime > 50) { // 20 раз в секунду
-                    socket.emit('player-move', {
-                        position: localPlayerBody.position,
-                        rotation: yawObject.rotation.y
-                    });
+                    if (socket.connected) {
+                        socket.emit('player-move', {
+                            position: {
+                                x: localPlayerBody.position.x,
+                                y: localPlayerBody.position.y,
+                                z: localPlayerBody.position.z
+                            },
+                            rotation: yawObject.rotation.y
+                        });
+                    }
                     lastSendTime = now;
                 }
-                */
             }
 
             // ==================== ИГРОВОЙ ЦИКЛ ====================
@@ -552,17 +556,12 @@
                 }
 
                 // ========== ОБНОВЛЕНИЕ ДРУГИХ ИГРОКОВ ==========
-                for (let [id, player] of otherPlayers) {
-                    const model = player.model;
-                    
-                    // В демо-режиме двигаем их случайно
-                    if (!player.targetPosition) {
-                        // Просто оставляем на месте
-                    } else {
-                        // Плавно двигаем к целевой позиции (для реальных игроков)
-                        // В демо просто оставляем как есть
+                otherPlayers.forEach((player) => {
+                    if (player.targetPosition) {
+                        // Плавная интерполяция
+                        player.model.position.lerp(player.targetPosition, 0.3);
                     }
-                }
+                });
 
                 // ========== АНИМАЦИЯ ХОДЬБЫ (локальный) ==========
                 const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
@@ -570,10 +569,11 @@
                     walkTime += delta * 12;
                     const swing = Math.sin(walkTime) * 0.7;
                     
-                    localModel.children[2].rotation.x = swing; // leftLeg
-                    localModel.children[3].rotation.x = -swing; // rightLeg
-                    localModel.children[4].rotation.x = -swing; // leftArm
-                    localModel.children[5].rotation.x = swing; // rightArm
+                    // Индексы конечностей в группе: 2-leftLeg, 3-rightLeg, 4-leftArm, 5-rightArm
+                    localModel.children[2].rotation.x = swing;
+                    localModel.children[3].rotation.x = -swing;
+                    localModel.children[4].rotation.x = -swing;
+                    localModel.children[5].rotation.x = swing;
                 } else {
                     localModel.children[2].rotation.x = 0;
                     localModel.children[3].rotation.x = 0;
