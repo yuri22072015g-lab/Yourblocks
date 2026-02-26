@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour Game — Мультиплеер (LocalStorage)</title>
+    <title>3D Parkour Game — Синие костюмы + общие анимации</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
         #ui {
@@ -35,18 +35,6 @@
             box-shadow: 0 0 15px rgba(0,255,255,0.5);
             z-index: 100;
         }
-        #connection-status {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.6);
-            color: #0f0;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            border: 1px solid #0f0;
-            z-index: 100;
-        }
         #instruction {
             position: absolute;
             bottom: 20px;
@@ -64,16 +52,13 @@
         ⚡ <span>WASD</span> — движение · <span>Пробел</span> — прыжок (кд 2 сек)<br>
         🖱️ <span>ПКМ</span> — вращение камеры · <span>Колёсико</span> — зум<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span><br>
-        👥 <span style="color:#88ccff">Другие игроки</span> — видны в других окнах
+        👥 <span style="color:#88ccff">Все игроки в синих костюмах</span>
     </div>
     <div id="players-count">
         👥 Игроков онлайн: <span id="player-counter">1</span>
     </div>
-    <div id="connection-status">
-        ✅ Локальная синхронизация
-    </div>
     <div id="instruction">
-        💡 Откройте 2 окна браузера → будут видны друг друга
+        💡 Откройте 2 окна → видны анимации друг друга
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -81,11 +66,11 @@
 
     <script>
         (function() {
-            // ==================== УНИКАЛЬНЫЙ ID ИГРОКА ====================
+            // ==================== УНИКАЛЬНЫЙ ID ====================
             const playerId = Math.random().toString(36).substring(2, 9);
             console.log('🎮 Мой ID:', playerId);
             
-            // ==================== ИНИЦИАЛИЗАЦИЯ СЦЕНЫ ====================
+            // ==================== СЦЕНА ====================
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87ceeb);
 
@@ -135,10 +120,10 @@
             world.addContactMaterial(contactMaterial);
             world.defaultContactMaterial = contactMaterial;
 
-            // ==================== ГРУППЫ ДЛЯ СМЕРТИ ====================
+            // ==================== КРАСНЫЕ БЛОКИ ====================
             const deathBlocks = [];
 
-            // ==================== СОЗДАНИЕ УРОВНЯ ====================
+            // ==================== УРОВЕНЬ ====================
             
             // Земля
             const groundMesh = new THREE.Mesh(
@@ -154,7 +139,7 @@
             groundBody.position.copy(groundMesh.position);
             world.addBody(groundBody);
 
-            // Уровень 1 (цветные платформы)
+            // Уровень 1
             for (let i = 0; i < 15; i++) {
                 const platformMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(8, 1, 8),
@@ -214,7 +199,7 @@
                 }
             }
 
-            // ==================== ИГРОК (ЛОКАЛЬНЫЙ) ====================
+            // ==================== ЛОКАЛЬНЫЙ ИГРОК ====================
             const localPlayerBody = new CANNON.Body({
                 mass: 5,
                 material: playerMaterial,
@@ -229,22 +214,13 @@
 
             const spawnPosition = new CANNON.Vec3(0, 8, 5);
 
-            // ==================== СОЗДАНИЕ МОДЕЛЕЙ ИГРОКОВ ====================
-            const players = new Map(); // id -> { model, lastPosition }
-            
-            // Создание модели игрока по ID
-            function createPlayerModel(id, isLocal = false) {
+            // ==================== СОЗДАНИЕ МОДЕЛИ (СИНИЙ КОСТЮМ) ====================
+            function createPlayerModel() {
                 const group = new THREE.Group();
                 
-                // Уникальный цвет на основе ID
-                const hash = id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-                const hue = isLocal ? 0.6 : (hash % 100) / 100;
-                
-                const mainColor = new THREE.Color().setHSL(hue, 0.9, 0.5);
-                const limbColor = new THREE.Color().setHSL(hue, 0.8, 0.3);
-                
-                const bodyMat = new THREE.MeshStandardMaterial({ color: mainColor });
-                const limbMat = new THREE.MeshStandardMaterial({ color: limbColor });
+                // Все игроки синие
+                const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3366ff });
+                const limbMat = new THREE.MeshStandardMaterial({ color: 0x2244aa });
                 const headMat = new THREE.MeshStandardMaterial({ color: 0xffccaa });
 
                 const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), bodyMat);
@@ -280,21 +256,22 @@
                 return group;
             }
 
-            // Создаём модель локального игрока
-            const localModel = createPlayerModel(playerId, true);
+            // Локальная модель
+            const localModel = createPlayerModel();
             scene.add(localModel);
 
-            // ==================== МУЛЬТИПЛЕЕР ЧЕРЕЗ LOCALSTORAGE ====================
-            // Ключ для хранения данных всех игроков
-            const STORAGE_KEY = 'multiplayer_players';
+            // ==================== ДРУГИЕ ИГРОКИ ====================
+            const otherPlayers = new Map(); // id -> { model, lastPosition, lastWalkTime }
             
-            // Очищаем старые данные при первом запуске
-            if (!localStorage.getItem('multiplayer_initialized')) {
+            // ==================== LOCALSTORAGE МУЛЬТИПЛЕЕР ====================
+            const STORAGE_KEY = 'multiplayer_players_anim';
+            
+            // Очистка при первом запуске
+            if (!localStorage.getItem('multiplayer_anim_initialized')) {
                 localStorage.removeItem(STORAGE_KEY);
-                localStorage.setItem('multiplayer_initialized', 'true');
+                localStorage.setItem('multiplayer_anim_initialized', 'true');
             }
             
-            // Функция получения всех игроков из localStorage
             function getStoredPlayers() {
                 try {
                     const data = localStorage.getItem(STORAGE_KEY);
@@ -304,7 +281,6 @@
                 }
             }
             
-            // Функция сохранения игроков
             function savePlayers(playersData) {
                 try {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(playersData));
@@ -320,7 +296,7 @@
                 savePlayers(players);
             });
             
-            // Добавляем себя при загрузке
+            // Добавляем себя
             setTimeout(() => {
                 const players = getStoredPlayers();
                 players[playerId] = {
@@ -329,59 +305,65 @@
                         y: localPlayerBody.position.y,
                         z: localPlayerBody.position.z
                     },
+                    walkTime: 0,
+                    moving: false,
                     lastSeen: Date.now()
                 };
                 savePlayers(players);
             }, 100);
             
-            // Обновляем счётчик игроков
+            // Счётчик
             function updatePlayerCounter() {
                 const players = getStoredPlayers();
-                const count = Object.keys(players).length;
-                document.getElementById('player-counter').textContent = count;
+                document.getElementById('player-counter').textContent = Object.keys(players).length;
             }
             
-            // Синхронизация игроков
+            // Синхронизация
             function syncPlayers() {
                 const storedPlayers = getStoredPlayers();
                 
-                // Удаляем игроков, которых нет в хранилище
-                players.forEach((player, id) => {
-                    if (!storedPlayers[id] || id === playerId) {
-                        if (id !== playerId) {
-                            scene.remove(player.model);
-                            players.delete(id);
-                        }
+                // Удаляем отключившихся
+                otherPlayers.forEach((player, id) => {
+                    if (!storedPlayers[id]) {
+                        scene.remove(player.model);
+                        otherPlayers.delete(id);
                     }
                 });
                 
-                // Добавляем новых игроков
+                // Добавляем/обновляем
                 Object.keys(storedPlayers).forEach(id => {
                     if (id !== playerId) {
-                        if (!players.has(id)) {
-                            // Новый игрок
-                            const model = createPlayerModel(id, false);
+                        if (!otherPlayers.has(id)) {
+                            const model = createPlayerModel();
                             const pos = storedPlayers[id].position;
                             model.position.set(pos.x, pos.y, pos.z);
                             scene.add(model);
                             
-                            players.set(id, {
+                            otherPlayers.set(id, {
                                 model,
-                                lastPosition: new THREE.Vector3(pos.x, pos.y, pos.z)
+                                lastPosition: new THREE.Vector3(pos.x, pos.y, pos.z),
+                                lastWalkTime: storedPlayers[id].walkTime || 0,
+                                lastMoving: storedPlayers[id].moving || false
                             });
                             console.log('🟢 Новый игрок:', id);
                         } else {
-                            // Обновляем позицию существующего игрока
-                            const player = players.get(id);
-                            const pos = storedPlayers[id].position;
+                            const player = otherPlayers.get(id);
+                            const data = storedPlayers[id];
+                            
                             if (player.lastPosition) {
-                                player.lastPosition.set(pos.x, pos.y, pos.z);
+                                player.lastPosition.set(data.position.x, data.position.y, data.position.z);
                             }
+                            
+                            // Сохраняем анимационные данные
+                            player.lastWalkTime = data.walkTime || 0;
+                            player.lastMoving = data.moving || false;
                         }
                     }
                 });
                 
-                // Обновляем свою позицию в хранилище
+                // Обновляем себя
+                const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
+                
                 const currentPlayers = getStoredPlayers();
                 if (currentPlayers[playerId]) {
                     currentPlayers[playerId].position = {
@@ -389,6 +371,8 @@
                         y: localPlayerBody.position.y,
                         z: localPlayerBody.position.z
                     };
+                    currentPlayers[playerId].walkTime = walkTime;
+                    currentPlayers[playerId].moving = moving;
                     currentPlayers[playerId].lastSeen = Date.now();
                     savePlayers(currentPlayers);
                 }
@@ -396,10 +380,9 @@
                 updatePlayerCounter();
             }
 
-            // Запускаем синхронизацию каждые 100 мс
-            setInterval(syncPlayers, 100);
+            setInterval(syncPlayers, 50); // Чаще для плавности анимаций
             
-            // Очистка старых игроков (кто не обновлялся > 3 секунд)
+            // Очистка старых
             setInterval(() => {
                 const players = getStoredPlayers();
                 let changed = false;
@@ -447,6 +430,30 @@
                 localPlayerBody.velocity.set(0, 0, 0);
             }
 
+            // ==================== АНИМАЦИЯ КОНЕЧНОСТЕЙ ====================
+            function animatePlayer(model, walkTimeValue, isMoving) {
+                if (!model) return;
+                
+                // Индексы конечностей в группе
+                const leftLeg = model.children[2];
+                const rightLeg = model.children[3];
+                const leftArm = model.children[4];
+                const rightArm = model.children[5];
+                
+                if (isMoving) {
+                    const swing = Math.sin(walkTimeValue) * 0.7;
+                    leftLeg.rotation.x = swing;
+                    rightLeg.rotation.x = -swing;
+                    leftArm.rotation.x = -swing;
+                    rightArm.rotation.x = swing;
+                } else {
+                    leftLeg.rotation.x = 0;
+                    rightLeg.rotation.x = 0;
+                    leftArm.rotation.x = 0;
+                    rightArm.rotation.x = 0;
+                }
+            }
+
             // ==================== ИГРОВОЙ ЦИКЛ ====================
             const clock = new THREE.Clock();
             let walkTime = 0;
@@ -460,7 +467,7 @@
 
                 world.step(1 / 60, delta, 3);
 
-                // ========== ПРОВЕРКА НА СМЕРТЬ ==========
+                // ========== СМЕРТЬ ==========
                 let dead = false;
 
                 if (localPlayerBody.position.y < deathHeight) {
@@ -487,9 +494,7 @@
                         const distY = dy - closestY;
                         const distZ = dz - closestZ;
 
-                        const distSq = distX*distX + distY*distY + distZ*distZ;
-                        
-                        if (distSq < playerRadius * playerRadius) {
+                        if (distX*distX + distY*distY + distZ*distZ < playerRadius * playerRadius) {
                             dead = true;
                             break;
                         }
@@ -500,7 +505,7 @@
                     respawn();
                 }
 
-                // ========== УПРАВЛЕНИЕ ==========
+                // ========== ДВИЖЕНИЕ ==========
                 if (!dead) {
                     const moveSpeed = 12;
 
@@ -546,30 +551,22 @@
                     }
                 }
 
-                // ========== ОБНОВЛЕНИЕ ПОЗИЦИЙ ДРУГИХ ИГРОКОВ ==========
-                players.forEach((player, id) => {
-                    if (player.lastPosition) {
-                        // Плавное движение к целевой позиции
-                        player.model.position.lerp(player.lastPosition, 0.3);
-                    }
-                });
-
-                // ========== АНИМАЦИЯ ==========
+                // ========== АНИМАЦИЯ ЛОКАЛЬНОГО ==========
                 const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
                 if (moving) {
                     walkTime += delta * 12;
-                    const swing = Math.sin(walkTime) * 0.7;
-                    
-                    localModel.children[2].rotation.x = swing;
-                    localModel.children[3].rotation.x = -swing;
-                    localModel.children[4].rotation.x = -swing;
-                    localModel.children[5].rotation.x = swing;
-                } else {
-                    localModel.children[2].rotation.x = 0;
-                    localModel.children[3].rotation.x = 0;
-                    localModel.children[4].rotation.x = 0;
-                    localModel.children[5].rotation.x = 0;
                 }
+                animatePlayer(localModel, walkTime, moving);
+
+                // ========== АНИМАЦИЯ ДРУГИХ ИГРОКОВ ==========
+                otherPlayers.forEach((player) => {
+                    if (player.lastPosition) {
+                        // Плавное движение
+                        player.model.position.lerp(player.lastPosition, 0.3);
+                    }
+                    // Анимация конечностей
+                    animatePlayer(player.model, player.lastWalkTime || 0, player.lastMoving || false);
+                });
 
                 // ========== КАМЕРА ==========
                 const firstPerson = cameraDistance <= minDistance + 0.2;
