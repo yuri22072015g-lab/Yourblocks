@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour — Жесты: 1 палец поворот, 2 пальца зум</title>
+    <title>3D Parkour — Исправленное управление</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { 
@@ -69,10 +69,10 @@
             position: absolute;
             bottom: 30px;
             left: 30px;
-            width: 100px;
-            height: 100px;
+            width: 120px;
+            height: 120px;
             background: rgba(30, 30, 40, 0.6);
-            border-radius: 50px;
+            border-radius: 60px;
             backdrop-filter: blur(8px);
             border: 2px solid rgba(255, 255, 255, 0.3);
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
@@ -84,8 +84,8 @@
         }
         
         #joystick-handle {
-            width: 40px;
-            height: 40px;
+            width: 50px;
+            height: 50px;
             background: rgba(255, 255, 255, 0.9);
             border-radius: 25px;
             box-shadow: 0 0 10px rgba(255,255,255,0.5);
@@ -97,10 +97,10 @@
             position: absolute;
             bottom: 40px;
             right: 30px;
-            width: 70px;
-            height: 70px;
+            width: 80px;
+            height: 80px;
             background: rgba(255, 80, 80, 0.9);
-            border-radius: 35px;
+            border-radius: 40px;
             backdrop-filter: blur(8px);
             border: 3px solid rgba(255, 255, 255, 0.9);
             box-shadow: 0 0 20px rgba(255,0,0,0.5);
@@ -109,7 +109,7 @@
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             text-transform: uppercase;
             touch-action: none;
@@ -135,11 +135,6 @@
             pointer-events: auto;
         }
         
-        /* Для ПК скрываем нативные кнопки зума, они больше не нужны */
-        #zoom-controls {
-            display: none;
-        }
-        
         @media (min-width: 768px) {
             #touch-joystick, #jump-button, #gesture-area {
                 display: none;
@@ -152,17 +147,13 @@
                 bottom: 20px;
                 right: 20px;
             }
-            /* Показываем ПК инструкцию */
-            #instruction br, #instruction .mobile-only {
-                display: none;
-            }
         }
     </style>
 </head>
 <body>
     <div id="ui">
         ⚡ <span>WASD</span> (ПК) · <span>Джойстик</span> (телефон)<br>
-        📱 <span>Телефон:</span> левый джойстик — ходьба<br>
+        📱 <span>Телефон:</span> джойстик — ходьба, правая половина — поворот камеры<br>
         🖱️ <span>ПК:</span> ПКМ + движение — поворот · Колёсико — зум<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span>
     </div>
@@ -170,9 +161,9 @@
         👥 <span id="player-counter">1</span>
     </div>
     <div id="instruction">
-        👆 1 палец: поворот камеры (правая половина)<br>
-        ✌️ 2 пальца: пинч-зум (сведение/разведение)<br>
-        🦿 Левый джойстик: ходьба
+        👆 1 палец: поворот камеры<br>
+        ✌️ 2 пальца: зум (пинч)<br>
+        🎮 Джойстик: движение
     </div>
 
     <!-- Сенсорное управление -->
@@ -191,7 +182,6 @@
         (function() {
             // ==================== ID ИГРОКА ====================
             const playerId = Math.random().toString(36).substring(2, 9);
-            console.log('🎮 Мой ID:', playerId);
             
             // ==================== СЦЕНА ====================
             const scene = new THREE.Scene();
@@ -210,10 +200,10 @@
             pitchObject.add(camera);
             scene.add(yawObject);
 
-            let cameraDistance = 7;
-            const minDistance = 3;
+            let cameraDistance = 8;
+            const minDistance = 4;
             const maxDistance = 15;
-            camera.position.set(0, 2.5, cameraDistance);
+            camera.position.set(0, 3, cameraDistance);
 
             // Зум колёсиком для ПК
             document.addEventListener("wheel", (e) => {
@@ -387,11 +377,11 @@
             const otherPlayers = new Map();
             
             // ==================== LOCALSTORAGE ====================
-            const STORAGE_KEY = 'mobile_multiplayer_final_gestures';
+            const STORAGE_KEY = 'mobile_multiplayer_fixed';
             
-            if (!localStorage.getItem('mobile_final_init_gest')) {
+            if (!localStorage.getItem('mobile_fixed_init')) {
                 localStorage.removeItem(STORAGE_KEY);
-                localStorage.setItem('mobile_final_init_gest', 'true');
+                localStorage.setItem('mobile_fixed_init', 'true');
             }
             
             function getStoredPlayers() {
@@ -559,18 +549,24 @@
             jumpBtn.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 jumpPressed = false;
-                jumpBtn.classList.add('active'); // костыль? уберем класс
                 jumpBtn.classList.remove('active');
             });
             
-            // ========== НОВОЕ: ЖЕСТЫ КАМЕРЫ (1 палец поворот, 2 пальца пинч-зум) ==========
+            // ========== ЖЕСТЫ КАМЕРЫ ==========
             const gestureArea = document.getElementById('gesture-area');
             
-            let gestureTouches = []; // храним актуальные касания
+            let gestureTouches = [];
+            let lastSingleTouch = null;
             
             function handleGestureStart(e) {
                 e.preventDefault();
                 updateTouches(e);
+                if (gestureTouches.length === 1) {
+                    lastSingleTouch = {
+                        x: gestureTouches[0].clientX,
+                        y: gestureTouches[0].clientY
+                    };
+                }
             }
             
             function handleGestureMove(e) {
@@ -578,9 +574,8 @@
                 const prevTouches = [...gestureTouches];
                 updateTouches(e);
                 
-                // Если два пальца - обрабатываем пинч (зум)
+                // Пинч-зум (2 пальца)
                 if (gestureTouches.length === 2 && prevTouches.length === 2) {
-                    // Вычисляем расстояние между пальцами сейчас и до движения
                     const dx = gestureTouches[0].clientX - gestureTouches[1].clientX;
                     const dy = gestureTouches[0].clientY - gestureTouches[1].clientY;
                     const dist = Math.sqrt(dx*dx + dy*dy);
@@ -589,28 +584,41 @@
                     const pdy = prevTouches[0].clientY - prevTouches[1].clientY;
                     const prevDist = Math.sqrt(pdx*pdx + pdy*pdy);
                     
-                    const delta = prevDist - dist; // при сведении dist уменьшается -> delta >0 (приближение)
-                    cameraDistance += delta * 0.03; // чувствительность
+                    const delta = prevDist - dist;
+                    cameraDistance += delta * 0.02;
                     cameraDistance = Math.max(minDistance, Math.min(maxDistance, cameraDistance));
                 }
                 
-                // Если один палец - поворот камеры (drag)
-                if (gestureTouches.length === 1 && prevTouches.length === 1) {
+                // Поворот камеры (1 палец)
+                if (gestureTouches.length === 1 && lastSingleTouch) {
                     const touch = gestureTouches[0];
-                    const prevTouch = prevTouches[0];
                     
-                    const deltaX = touch.clientX - prevTouch.clientX;
-                    const deltaY = touch.clientY - prevTouch.clientY;
+                    const deltaX = touch.clientX - lastSingleTouch.x;
+                    const deltaY = touch.clientY - lastSingleTouch.y;
                     
-                    yawObject.rotation.y -= deltaX * 0.005;
-                    pitchObject.rotation.x -= deltaY * 0.005;
+                    // Уменьшаем чувствительность и инвертируем для более естественного управления
+                    yawObject.rotation.y += deltaX * 0.005; // Прямое направление (не инвертированное)
+                    pitchObject.rotation.x += deltaY * 0.003; // Прямое направление для вертикали
                     pitchObject.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitchObject.rotation.x));
+                    
+                    lastSingleTouch = {
+                        x: touch.clientX,
+                        y: touch.clientY
+                    };
                 }
             }
             
             function handleGestureEnd(e) {
                 e.preventDefault();
                 updateTouches(e);
+                if (gestureTouches.length === 0) {
+                    lastSingleTouch = null;
+                } else if (gestureTouches.length === 1) {
+                    lastSingleTouch = {
+                        x: gestureTouches[0].clientX,
+                        y: gestureTouches[0].clientY
+                    };
+                }
             }
             
             function updateTouches(e) {
@@ -756,7 +764,7 @@
                         localModel.rotation.y = angle;
                     }
 
-                    // Движение относительно камеры
+                    // Движение относительно камеры (исправлено направление)
                     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
                     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
                     
@@ -765,6 +773,7 @@
                     forward.normalize();
                     right.normalize();
                     
+                    // Исправлено: теперь движение соответствует направлению джойстика
                     localPlayerBody.velocity.x = (forward.x * moveZ + right.x * moveX) * moveSpeed;
                     localPlayerBody.velocity.z = (forward.z * moveZ + right.z * moveX) * moveSpeed;
 
@@ -796,10 +805,10 @@
                 // ========== КАМЕРА ==========
                 const firstPerson = cameraDistance <= minDistance + 0.2;
                 if (firstPerson) {
-                    camera.position.set(0, 3, 0);
+                    camera.position.set(0, 3, 0.5);
                     localModel.visible = false;
                 } else {
-                    camera.position.set(0, 2.5, cameraDistance);
+                    camera.position.set(0, 3, cameraDistance);
                     localModel.visible = true;
                 }
 
