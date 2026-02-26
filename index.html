@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour Game — Синие костюмы + общие анимации</title>
+    <title>3D Parkour Game — Анимации синхронизированы</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
         #ui {
@@ -52,13 +52,13 @@
         ⚡ <span>WASD</span> — движение · <span>Пробел</span> — прыжок (кд 2 сек)<br>
         🖱️ <span>ПКМ</span> — вращение камеры · <span>Колёсико</span> — зум<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span><br>
-        👥 <span style="color:#88ccff">Все игроки в синих костюмах</span>
+        👥 <span style="color:#88ccff">Анимации синхронизированы</span>
     </div>
     <div id="players-count">
         👥 Игроков онлайн: <span id="player-counter">1</span>
     </div>
     <div id="instruction">
-        💡 Откройте 2 окна → видны анимации друг друга
+        💡 Двигайтесь — другие видят анимацию
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -66,7 +66,7 @@
 
     <script>
         (function() {
-            // ==================== УНИКАЛЬНЫЙ ID ====================
+            // ==================== ID ИГРОКА ====================
             const playerId = Math.random().toString(36).substring(2, 9);
             console.log('🎮 Мой ID:', playerId);
             
@@ -214,11 +214,10 @@
 
             const spawnPosition = new CANNON.Vec3(0, 8, 5);
 
-            // ==================== СОЗДАНИЕ МОДЕЛИ (СИНИЙ КОСТЮМ) ====================
+            // ==================== СОЗДАНИЕ МОДЕЛИ ====================
             function createPlayerModel() {
                 const group = new THREE.Group();
                 
-                // Все игроки синие
                 const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3366ff });
                 const limbMat = new THREE.MeshStandardMaterial({ color: 0x2244aa });
                 const headMat = new THREE.MeshStandardMaterial({ color: 0xffccaa });
@@ -261,15 +260,15 @@
             scene.add(localModel);
 
             // ==================== ДРУГИЕ ИГРОКИ ====================
-            const otherPlayers = new Map(); // id -> { model, lastPosition, lastWalkTime }
+            const otherPlayers = new Map(); // id -> { model, targetPos, walkTime, moving }
             
-            // ==================== LOCALSTORAGE МУЛЬТИПЛЕЕР ====================
-            const STORAGE_KEY = 'multiplayer_players_anim';
+            // ==================== LOCALSTORAGE ====================
+            const STORAGE_KEY = 'multiplayer_sync';
             
             // Очистка при первом запуске
-            if (!localStorage.getItem('multiplayer_anim_initialized')) {
+            if (!localStorage.getItem('sync_initialized')) {
                 localStorage.removeItem(STORAGE_KEY);
-                localStorage.setItem('multiplayer_anim_initialized', 'true');
+                localStorage.setItem('sync_initialized', 'true');
             }
             
             function getStoredPlayers() {
@@ -318,8 +317,8 @@
                 document.getElementById('player-counter').textContent = Object.keys(players).length;
             }
             
-            // Синхронизация
-            function syncPlayers() {
+            // СИНХРОНИЗАЦИЯ (каждые 50 мс)
+            setInterval(() => {
                 const storedPlayers = getStoredPlayers();
                 
                 // Удаляем отключившихся
@@ -330,33 +329,30 @@
                     }
                 });
                 
-                // Добавляем/обновляем
+                // Добавляем/обновляем других игроков
                 Object.keys(storedPlayers).forEach(id => {
                     if (id !== playerId) {
+                        const data = storedPlayers[id];
+                        
                         if (!otherPlayers.has(id)) {
+                            // Новый игрок
                             const model = createPlayerModel();
-                            const pos = storedPlayers[id].position;
-                            model.position.set(pos.x, pos.y, pos.z);
+                            model.position.set(data.position.x, data.position.y, data.position.z);
                             scene.add(model);
                             
                             otherPlayers.set(id, {
                                 model,
-                                lastPosition: new THREE.Vector3(pos.x, pos.y, pos.z),
-                                lastWalkTime: storedPlayers[id].walkTime || 0,
-                                lastMoving: storedPlayers[id].moving || false
+                                targetPos: new THREE.Vector3(data.position.x, data.position.y, data.position.z),
+                                walkTime: data.walkTime,
+                                moving: data.moving
                             });
                             console.log('🟢 Новый игрок:', id);
                         } else {
+                            // Обновляем существующего
                             const player = otherPlayers.get(id);
-                            const data = storedPlayers[id];
-                            
-                            if (player.lastPosition) {
-                                player.lastPosition.set(data.position.x, data.position.y, data.position.z);
-                            }
-                            
-                            // Сохраняем анимационные данные
-                            player.lastWalkTime = data.walkTime || 0;
-                            player.lastMoving = data.moving || false;
+                            player.targetPos.set(data.position.x, data.position.y, data.position.z);
+                            player.walkTime = data.walkTime;
+                            player.moving = data.moving;
                         }
                     }
                 });
@@ -378,11 +374,9 @@
                 }
                 
                 updatePlayerCounter();
-            }
-
-            setInterval(syncPlayers, 50); // Чаще для плавности анимаций
+            }, 50);
             
-            // Очистка старых
+            // Очистка старых (каждую секунду)
             setInterval(() => {
                 const players = getStoredPlayers();
                 let changed = false;
@@ -430,11 +424,11 @@
                 localPlayerBody.velocity.set(0, 0, 0);
             }
 
-            // ==================== АНИМАЦИЯ КОНЕЧНОСТЕЙ ====================
+            // ==================== АНИМАЦИЯ ====================
             function animatePlayer(model, walkTimeValue, isMoving) {
                 if (!model) return;
                 
-                // Индексы конечностей в группе
+                // Индексы конечностей
                 const leftLeg = model.children[2];
                 const rightLeg = model.children[3];
                 const leftArm = model.children[4];
@@ -558,14 +552,13 @@
                 }
                 animatePlayer(localModel, walkTime, moving);
 
-                // ========== АНИМАЦИЯ ДРУГИХ ИГРОКОВ ==========
+                // ========== АНИМАЦИЯ ДРУГИХ ==========
                 otherPlayers.forEach((player) => {
-                    if (player.lastPosition) {
-                        // Плавное движение
-                        player.model.position.lerp(player.lastPosition, 0.3);
-                    }
-                    // Анимация конечностей
-                    animatePlayer(player.model, player.lastWalkTime || 0, player.lastMoving || false);
+                    // Плавное движение к целевой позиции
+                    player.model.position.lerp(player.targetPos, 0.3);
+                    
+                    // Анимация конечностей на основе полученных данных
+                    animatePlayer(player.model, player.walkTime || 0, player.moving || false);
                 });
 
                 // ========== КАМЕРА ==========
