@@ -2,63 +2,218 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour Game — Анимации синхронизированы</title>
+    <title>3D Parkour Game — Мобильная версия с мультиплеером</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
         #ui {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(10, 10, 20, 0.75);
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(10, 10, 20, 0.8);
             color: #fff;
-            padding: 14px 20px;
+            padding: 10px 15px;
             border-radius: 12px;
-            font-size: 15px;
+            font-size: 14px;
             backdrop-filter: blur(4px);
             border: 1px solid #444;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             pointer-events: none;
             z-index: 100;
+            text-align: center;
         }
         #ui span { color: #ffaa00; font-weight: bold; }
+        
         #players-count {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.6);
+            bottom: 120px;
+            right: 15px;
+            background: rgba(0,0,0,0.7);
             color: #0ff;
-            padding: 8px 18px;
-            border-radius: 20px;
+            padding: 8px 16px;
+            border-radius: 30px;
             font-family: monospace;
             font-size: 16px;
-            border: 1px solid #0ff;
-            box-shadow: 0 0 15px rgba(0,255,255,0.5);
+            border: 2px solid #0ff;
+            box-shadow: 0 0 20px rgba(0,255,255,0.5);
             z-index: 100;
+            backdrop-filter: blur(4px);
+            font-weight: bold;
+            pointer-events: none;
         }
+        
         #instruction {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.5);
+            bottom: 180px;
+            left: 15px;
+            background: rgba(0,0,0,0.6);
             color: #fff;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 20px;
-            font-size: 14px;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        /* Сенсорное управление */
+        #touch-joystick {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            background: rgba(30, 30, 40, 0.7);
+            border-radius: 60px;
+            backdrop-filter: blur(8px);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+        
+        #joystick-handle {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 30px;
+            box-shadow: 0 0 15px rgba(255,255,255,0.5);
+            transition: transform 0.01s;
+            border: 2px solid #4CAF50;
+        }
+        
+        #jump-button {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 100, 100, 0.8);
+            border-radius: 50px;
+            backdrop-filter: blur(8px);
+            border: 4px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 30px rgba(255,0,0,0.5);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            touch-action: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #jump-button.active {
+            background: rgba(255, 50, 50, 1);
+            transform: scale(0.95);
+            box-shadow: 0 0 40px rgba(255,0,0,0.8);
+        }
+        
+        #camera-button {
+            position: absolute;
+            top: 120px;
+            right: 15px;
+            width: 60px;
+            height: 60px;
+            background: rgba(50, 50, 80, 0.8);
+            border-radius: 30px;
+            backdrop-filter: blur(8px);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            touch-action: none;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        
+        #camera-button.active {
+            background: rgba(80, 80, 150, 0.9);
+        }
+        
+        #zoom-controls {
+            position: absolute;
+            top: 200px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 200;
+        }
+        
+        .zoom-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(50, 50, 80, 0.8);
+            border-radius: 30px;
+            backdrop-filter: blur(8px);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            touch-action: none;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        
+        @media (min-width: 768px) {
+            #touch-joystick, #jump-button, #camera-button, #zoom-controls {
+                display: none;
+            }
+            #instruction {
+                bottom: 20px;
+                left: 20px;
+            }
+            #players-count {
+                bottom: 20px;
+                right: 20px;
+            }
         }
     </style>
 </head>
 <body>
     <div id="ui">
-        ⚡ <span>WASD</span> — движение · <span>Пробел</span> — прыжок (кд 2 сек)<br>
-        🖱️ <span>ПКМ</span> — вращение камеры · <span>Колёсико</span> — зум<br>
+        ⚡ <span>WASD</span> (комп) · <span>Джойстик</span> (телефон)<br>
+        🖱️ <span>ПКМ</span> или <span>кнопка камеры</span> — поворот<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span><br>
-        👥 <span style="color:#88ccff">Анимации синхронизированы</span>
+        👥 <span style="color:#88ccff">Все игроки синхронизированы</span>
     </div>
     <div id="players-count">
-        👥 Игроков онлайн: <span id="player-counter">1</span>
+        👥 <span id="player-counter">1</span>
     </div>
     <div id="instruction">
-        💡 Двигайтесь — другие видят анимацию
+        💡 Двигайте джойстик → ходьба, кнопка → прыжок
+    </div>
+
+    <!-- Сенсорное управление -->
+    <div id="touch-joystick">
+        <div id="joystick-handle"></div>
+    </div>
+    <div id="jump-button">
+        ПРЫЖОК
+    </div>
+    <div id="camera-button">
+        🔄
+    </div>
+    <div id="zoom-controls">
+        <div class="zoom-btn" id="zoom-in">+</div>
+        <div class="zoom-btn" id="zoom-out">−</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -74,7 +229,7 @@
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87ceeb);
 
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2000);
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
@@ -91,11 +246,6 @@
             const minDistance = 3;
             const maxDistance = 15;
             camera.position.set(0, 2.5, cameraDistance);
-
-            document.addEventListener("wheel", (e) => {
-                cameraDistance += e.deltaY * 0.01;
-                cameraDistance = Math.max(minDistance, Math.min(maxDistance, cameraDistance));
-            });
 
             // ==================== ОСВЕЩЕНИЕ ====================
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -214,7 +364,7 @@
 
             const spawnPosition = new CANNON.Vec3(0, 8, 5);
 
-            // ==================== СОЗДАНИЕ МОДЕЛИ ====================
+            // ==================== МОДЕЛЬ ИГРОКА ====================
             function createPlayerModel() {
                 const group = new THREE.Group();
                 
@@ -255,20 +405,18 @@
                 return group;
             }
 
-            // Локальная модель
             const localModel = createPlayerModel();
             scene.add(localModel);
 
             // ==================== ДРУГИЕ ИГРОКИ ====================
-            const otherPlayers = new Map(); // id -> { model, targetPos, walkTime, moving }
+            const otherPlayers = new Map();
             
             // ==================== LOCALSTORAGE ====================
-            const STORAGE_KEY = 'multiplayer_sync';
+            const STORAGE_KEY = 'mobile_multiplayer';
             
-            // Очистка при первом запуске
-            if (!localStorage.getItem('sync_initialized')) {
+            if (!localStorage.getItem('mobile_init')) {
                 localStorage.removeItem(STORAGE_KEY);
-                localStorage.setItem('sync_initialized', 'true');
+                localStorage.setItem('mobile_init', 'true');
             }
             
             function getStoredPlayers() {
@@ -283,19 +431,15 @@
             function savePlayers(playersData) {
                 try {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(playersData));
-                } catch (e) {
-                    console.error('Ошибка сохранения:', e);
-                }
+                } catch (e) {}
             }
             
-            // Удаляем себя при закрытии
             window.addEventListener('beforeunload', () => {
                 const players = getStoredPlayers();
                 delete players[playerId];
                 savePlayers(players);
             });
             
-            // Добавляем себя
             setTimeout(() => {
                 const players = getStoredPlayers();
                 players[playerId] = {
@@ -311,17 +455,10 @@
                 savePlayers(players);
             }, 100);
             
-            // Счётчик
-            function updatePlayerCounter() {
-                const players = getStoredPlayers();
-                document.getElementById('player-counter').textContent = Object.keys(players).length;
-            }
-            
-            // СИНХРОНИЗАЦИЯ (каждые 50 мс)
+            // Синхронизация
             setInterval(() => {
                 const storedPlayers = getStoredPlayers();
                 
-                // Удаляем отключившихся
                 otherPlayers.forEach((player, id) => {
                     if (!storedPlayers[id]) {
                         scene.remove(player.model);
@@ -329,13 +466,11 @@
                     }
                 });
                 
-                // Добавляем/обновляем других игроков
                 Object.keys(storedPlayers).forEach(id => {
                     if (id !== playerId) {
                         const data = storedPlayers[id];
                         
                         if (!otherPlayers.has(id)) {
-                            // Новый игрок
                             const model = createPlayerModel();
                             model.position.set(data.position.x, data.position.y, data.position.z);
                             scene.add(model);
@@ -346,9 +481,7 @@
                                 walkTime: data.walkTime,
                                 moving: data.moving
                             });
-                            console.log('🟢 Новый игрок:', id);
                         } else {
-                            // Обновляем существующего
                             const player = otherPlayers.get(id);
                             player.targetPos.set(data.position.x, data.position.y, data.position.z);
                             player.walkTime = data.walkTime;
@@ -357,7 +490,6 @@
                     }
                 });
                 
-                // Обновляем себя
                 const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
                 
                 const currentPlayers = getStoredPlayers();
@@ -373,10 +505,10 @@
                     savePlayers(currentPlayers);
                 }
                 
-                updatePlayerCounter();
+                document.getElementById('player-counter').textContent = Object.keys(storedPlayers).length;
             }, 50);
             
-            // Очистка старых (каждую секунду)
+            // Очистка старых
             setInterval(() => {
                 const players = getStoredPlayers();
                 let changed = false;
@@ -388,20 +520,118 @@
                     }
                 });
                 
-                if (changed) {
-                    savePlayers(players);
-                }
+                if (changed) savePlayers(players);
             }, 1000);
 
-            // ==================== УПРАВЛЕНИЕ ====================
+            // ==================== СЕНСОРНОЕ УПРАВЛЕНИЕ ====================
+            // Джойстик
+            const joystick = document.getElementById('touch-joystick');
+            const handle = document.getElementById('joystick-handle');
+            let joystickActive = false;
+            let joystickVector = { x: 0, y: 0 };
+            
+            joystick.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                joystickActive = true;
+                updateJoystick(e.touches[0]);
+            });
+            
+            joystick.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (joystickActive) updateJoystick(e.touches[0]);
+            });
+            
+            joystick.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                joystickActive = false;
+                joystickVector = { x: 0, y: 0 };
+                handle.style.transform = 'translate(0px, 0px)';
+            });
+            
+            function updateJoystick(touch) {
+                const rect = joystick.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                let dx = touch.clientX - centerX;
+                let dy = touch.clientY - centerY;
+                
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                const maxDistance = rect.width / 2;
+                
+                if (distance > maxDistance) {
+                    dx = (dx / distance) * maxDistance;
+                    dy = (dy / distance) * maxDistance;
+                }
+                
+                handle.style.transform = `translate(${dx}px, ${dy}px)`;
+                
+                joystickVector.x = dx / maxDistance;
+                joystickVector.y = dy / maxDistance;
+            }
+            
+            // Кнопка прыжка
+            const jumpBtn = document.getElementById('jump-button');
+            let jumpPressed = false;
+            
+            jumpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                jumpPressed = true;
+                jumpBtn.classList.add('active');
+            });
+            
+            jumpBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                jumpPressed = false;
+                jumpBtn.classList.remove('active');
+            });
+            
+            // Управление камерой
+            const cameraBtn = document.getElementById('camera-button');
+            let cameraMode = false;
+            let lastTouchX = 0;
+            
+            cameraBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                cameraMode = true;
+                lastTouchX = e.touches[0].clientX;
+                cameraBtn.classList.add('active');
+            });
+            
+            cameraBtn.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (!cameraMode) return;
+                
+                const touch = e.touches[0];
+                const deltaX = touch.clientX - lastTouchX;
+                yawObject.rotation.y -= deltaX * 0.01;
+                lastTouchX = touch.clientX;
+            });
+            
+            cameraBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                cameraMode = false;
+                cameraBtn.classList.remove('active');
+            });
+            
+            // Зум
+            document.getElementById('zoom-in').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                cameraDistance = Math.max(minDistance, cameraDistance - 1);
+            });
+            
+            document.getElementById('zoom-out').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                cameraDistance = Math.min(maxDistance, cameraDistance + 1);
+            });
+
+            // ==================== КЛАВИАТУРА (для ПК) ====================
             const keys = {};
             document.addEventListener("keydown", (e) => keys[e.code] = true);
             document.addEventListener("keyup", (e) => keys[e.code] = false);
             document.addEventListener("contextmenu", (e) => e.preventDefault());
 
             let mouseDown = false;
-            const cameraSensitivity = 0.006;
-
             document.addEventListener("mousedown", (e) => {
                 if (e.button === 2) mouseDown = true;
             });
@@ -410,9 +640,7 @@
             });
             document.addEventListener("mousemove", (e) => {
                 if (!mouseDown) return;
-                yawObject.rotation.y -= e.movementX * cameraSensitivity;
-                pitchObject.rotation.x -= e.movementY * cameraSensitivity;
-                pitchObject.rotation.x = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, pitchObject.rotation.x));
+                yawObject.rotation.y -= e.movementX * 0.002;
             });
 
             // ==================== ПРЫЖОК ====================
@@ -428,7 +656,6 @@
             function animatePlayer(model, walkTimeValue, isMoving) {
                 if (!model) return;
                 
-                // Индексы конечностей
                 const leftLeg = model.children[2];
                 const rightLeg = model.children[3];
                 const leftArm = model.children[4];
@@ -502,39 +729,37 @@
                 // ========== ДВИЖЕНИЕ ==========
                 if (!dead) {
                     const moveSpeed = 12;
-
-                    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
-                    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
-
+                    
                     let moveX = 0, moveZ = 0;
                     
-                    if (keys["KeyW"]) {
-                        moveX += forward.x;
-                        moveZ += forward.z;
+                    // Клавиатура (ПК)
+                    if (keys["KeyW"]) moveZ -= 1;
+                    if (keys["KeyS"]) moveZ += 1;
+                    if (keys["KeyA"]) moveX -= 1;
+                    if (keys["KeyD"]) moveX += 1;
+                    
+                    // Джойстик (телефон)
+                    if (joystickActive) {
+                        moveX += joystickVector.x;
+                        moveZ -= joystickVector.y;
                     }
-                    if (keys["KeyS"]) {
-                        moveX -= forward.x;
-                        moveZ -= forward.z;
-                    }
-                    if (keys["KeyA"]) {
-                        moveX -= right.x;
-                        moveZ -= right.z;
-                    }
-                    if (keys["KeyD"]) {
-                        moveX += right.x;
-                        moveZ += right.z;
-                    }
-
+                    
                     if (moveX !== 0 || moveZ !== 0) {
                         const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
                         moveX /= len;
                         moveZ /= len;
+                        
+                        // Поворот в направлении движения
+                        const angle = Math.atan2(moveX, moveZ);
+                        yawObject.rotation.y = angle;
                     }
 
                     localPlayerBody.velocity.x = moveX * moveSpeed;
                     localPlayerBody.velocity.z = moveZ * moveSpeed;
 
-                    if (keys["Space"]) {
+                    // Прыжок
+                    const shouldJump = keys["Space"] || jumpPressed;
+                    if (shouldJump) {
                         if (Math.abs(localPlayerBody.velocity.y) < 0.1) {
                             const currentTime = elapsedTime;
                             if (currentTime - lastJumpTime >= jumpCooldown) {
@@ -545,19 +770,15 @@
                     }
                 }
 
-                // ========== АНИМАЦИЯ ЛОКАЛЬНОГО ==========
+                // ========== АНИМАЦИЯ ==========
                 const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
                 if (moving) {
                     walkTime += delta * 12;
                 }
                 animatePlayer(localModel, walkTime, moving);
 
-                // ========== АНИМАЦИЯ ДРУГИХ ==========
                 otherPlayers.forEach((player) => {
-                    // Плавное движение к целевой позиции
                     player.model.position.lerp(player.targetPos, 0.3);
-                    
-                    // Анимация конечностей на основе полученных данных
                     animatePlayer(player.model, player.walkTime || 0, player.moving || false);
                 });
 
