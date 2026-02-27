@@ -17,6 +17,7 @@
         body {
             overflow: hidden;
             background: #141414;
+            touch-action: none;
         }
         
         /* Экран входа */
@@ -686,6 +687,95 @@
             z-index: 200;
         }
         
+        /* МОБИЛЬНОЕ УПРАВЛЕНИЕ */
+        #mobile-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 150;
+            pointer-events: none;
+            display: none;
+        }
+        
+        #mobile-controls.active {
+            display: block;
+        }
+        
+        /* Левый джойстик */
+        #joystick-left {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 120px;
+            height: 120px;
+            background: rgba(30, 30, 40, 0.7);
+            border-radius: 60px;
+            backdrop-filter: blur(10px);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            z-index: 151;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+        
+        #joystick-handle {
+            width: 50px;
+            height: 50px;
+            background: rgba(76, 175, 80, 0.9);
+            border-radius: 25px;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+            transition: transform 0.01s;
+            border: 2px solid white;
+        }
+        
+        /* Кнопка прыжка */
+        #jump-button {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 80, 80, 0.9);
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            border: 3px solid white;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+            z-index: 151;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            touch-action: none;
+            transition: all 0.1s;
+        }
+        
+        #jump-button.active {
+            transform: scale(0.9);
+            background: rgba(255, 40, 40, 1);
+        }
+        
+        /* Правая область для поворота камеры */
+        #camera-area {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%;
+            height: 100%;
+            z-index: 152;
+            pointer-events: auto;
+            background: transparent;
+            touch-action: none;
+        }
+        
         /* Кнопка выхода из аккаунта */
         .logout-btn {
             position: fixed;
@@ -783,6 +873,26 @@
                 padding: 5px 10px;
                 top: 10px;
                 left: 10px;
+            }
+            
+            #joystick-left {
+                width: 100px;
+                height: 100px;
+                bottom: 30px;
+                left: 30px;
+            }
+            
+            #joystick-handle {
+                width: 40px;
+                height: 40px;
+            }
+            
+            #jump-button {
+                width: 80px;
+                height: 80px;
+                bottom: 30px;
+                right: 30px;
+                font-size: 16px;
             }
         }
     </style>
@@ -1063,7 +1173,24 @@
         <div class="server-status" id="server-status">🔵 ПОДКЛЮЧЕНИЕ...</div>
         <div class="players-count" id="players-count">👥 1/10</div>
         <div class="ground-indicator onground" id="ground-indicator">🟢 НА ЗЕМЛЕ</div>
-        <div class="jump-hint">👆 Пробел - прыжок (только на земле)</div>
+        <div class="jump-hint">👆 Нажми кнопку прыжка (только на земле)</div>
+        
+        <!-- Мобильное управление -->
+        <div id="mobile-controls">
+            <!-- Левый джойстик для движения -->
+            <div id="joystick-left">
+                <div id="joystick-handle"></div>
+            </div>
+            
+            <!-- Кнопка прыжка -->
+            <div id="jump-button">
+                ПРЫЖОК
+            </div>
+            
+            <!-- Область для поворота камеры -->
+            <div id="camera-area"></div>
+        </div>
+        
         <div id="game-canvas"></div>
     </div>
     
@@ -1516,9 +1643,21 @@
         let deathBlocks = [];
         let walkTime = 0;
         
+        // Мобильное управление
+        let joystickActive = false;
+        let joystickVector = { x: 0, y: 0 };
+        let jumpButtonPressed = false;
+        let cameraTouchActive = false;
+        let lastTouchX = 0, lastTouchY = 0;
+        
         async function startGame() {
             document.getElementById('menu-container').style.display = 'none';
             document.getElementById('game-container').classList.add('active');
+            
+            // Показываем мобильное управление только на телефонах
+            if (window.innerWidth <= 768) {
+                document.getElementById('mobile-controls').classList.add('active');
+            }
             
             // Инициализируем мультиплеер
             try {
@@ -1528,6 +1667,7 @@
             }
             
             initThreeJSGame(document.getElementById('game-canvas'));
+            initMobileControls();
         }
         
         function exitGame() {
@@ -1539,6 +1679,7 @@
             
             document.getElementById('menu-container').style.display = 'flex';
             document.getElementById('game-container').classList.remove('active');
+            document.getElementById('mobile-controls').classList.remove('active');
             document.getElementById('game-canvas').innerHTML = '';
             
             if (window.gameAnimation) {
@@ -1555,6 +1696,104 @@
                 }
             }
         });
+        
+        // ==================== МОБИЛЬНОЕ УПРАВЛЕНИЕ ====================
+        function initMobileControls() {
+            const joystick = document.getElementById('joystick-left');
+            const handle = document.getElementById('joystick-handle');
+            const jumpBtn = document.getElementById('jump-button');
+            const cameraArea = document.getElementById('camera-area');
+            
+            // Джойстик
+            joystick.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                joystickActive = true;
+                updateJoystick(e.touches[0]);
+            });
+            
+            joystick.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (joystickActive) updateJoystick(e.touches[0]);
+            });
+            
+            joystick.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                joystickActive = false;
+                joystickVector = { x: 0, y: 0 };
+                handle.style.transform = 'translate(0px, 0px)';
+            });
+            
+            function updateJoystick(touch) {
+                const rect = joystick.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                let dx = touch.clientX - centerX;
+                let dy = touch.clientY - centerY;
+                
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                const maxDistance = rect.width / 2;
+                
+                if (distance > maxDistance) {
+                    dx = (dx / distance) * maxDistance;
+                    dy = (dy / distance) * maxDistance;
+                }
+                
+                handle.style.transform = `translate(${dx}px, ${dy}px)`;
+                
+                joystickVector.x = dx / maxDistance;
+                joystickVector.y = dy / maxDistance;
+            }
+            
+            // Кнопка прыжка
+            jumpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                jumpButtonPressed = true;
+                jumpBtn.classList.add('active');
+            });
+            
+            jumpBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                jumpButtonPressed = false;
+                jumpBtn.classList.remove('active');
+            });
+            
+            // Область поворота камеры
+            cameraArea.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                cameraTouchActive = true;
+                lastTouchX = e.touches[0].clientX;
+                lastTouchY = e.touches[0].clientY;
+            });
+            
+            cameraArea.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (!cameraTouchActive || !yawObject) return;
+                
+                const touch = e.touches[0];
+                const deltaX = touch.clientX - lastTouchX;
+                const deltaY = touch.clientY - lastTouchY;
+                
+                yawObject.rotation.y -= deltaX * 0.005;
+                if (pitchObject) {
+                    pitchObject.rotation.x -= deltaY * 0.003;
+                    pitchObject.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitchObject.rotation.x));
+                }
+                
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+            });
+            
+            cameraArea.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                cameraTouchActive = false;
+            });
+            
+            cameraArea.addEventListener('touchcancel', (e) => {
+                e.preventDefault();
+                cameraTouchActive = false;
+            });
+        }
         
         // ==================== THREE.JS ИГРА ====================
         function initThreeJSGame(container) {
@@ -1796,7 +2035,7 @@
                 return group;
             }
             
-            // Управление
+            // Управление с клавиатуры
             keys = {};
             jumpPressed = false;
             spaceKeyDown = false;
@@ -1818,7 +2057,7 @@
                 }
             });
             
-            // Мышь для поворота
+            // Мышь для поворота на ПК
             let mouseDown = false;
             document.addEventListener("mousedown", (e) => {
                 if (e.button === 2) mouseDown = true;
@@ -1885,14 +2124,21 @@
                     localPlayerBody.velocity.set(0, 0, 0);
                 }
                 
-                // Движение
+                // Движение (клавиатура + джойстик)
                 const moveSpeed = 12;
                 let moveX = 0, moveZ = 0;
                 
+                // Клавиатура
                 if (keys["KeyW"]) moveZ += 1;
                 if (keys["KeyS"]) moveZ -= 1;
                 if (keys["KeyA"]) moveX -= 1;
                 if (keys["KeyD"]) moveX += 1;
+                
+                // Джойстик (мобильное управление)
+                if (joystickActive) {
+                    moveX += joystickVector.x;
+                    moveZ += -joystickVector.y; // Инвертируем Y для правильного направления
+                }
                 
                 if (moveX !== 0 || moveZ !== 0) {
                     const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
@@ -1914,7 +2160,7 @@
                 localPlayerBody.velocity.x = (forward.x * moveZ + right.x * moveX) * moveSpeed;
                 localPlayerBody.velocity.z = (forward.z * moveZ + right.z * moveX) * moveSpeed;
                 
-                // Прыжок
+                // Прыжок (клавиатура + кнопка на телефоне)
                 const onGround = isOnGround();
                 
                 if (onGround) {
@@ -1927,11 +2173,11 @@
                     groundIndicator.classList.remove('onground');
                 }
                 
-                if (jumpPressed && onGround) {
+                // Проверяем прыжок с клавиатуры или с кнопки на телефоне
+                if ((jumpPressed || jumpButtonPressed) && onGround) {
                     localPlayerBody.velocity.y = 10;
                     jumpPressed = false;
-                } else if (jumpPressed && !onGround) {
-                    jumpPressed = false;
+                    // Не сбрасываем jumpButtonPressed сразу, чтобы игрок мог удерживать кнопку
                 }
                 
                 // Отправляем позицию другим игрокам
