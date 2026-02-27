@@ -1437,11 +1437,12 @@
                     <div class="search-section">
                         <h3 class="search-title">🔍 Найти игроков</h3>
                         <div class="search-box">
-                            <input type="text" id="search-input" placeholder="Введите никнейм...">
+                            <input type="text" id="search-input" placeholder="Введите никнейм или его часть...">
                             <button onclick="searchPlayers()">Поиск</button>
                         </div>
                         <div id="search-results" class="search-results">
                             <!-- Результаты поиска будут здесь -->
+                            <div class="no-friends">Введите ник для поиска</div>
                         </div>
                     </div>
                     
@@ -1600,7 +1601,6 @@
             const newUser = {
                 password: password,
                 level: 1,
-                friends: 0,
                 games: 0,
                 created: Date.now(),
                 colors: {
@@ -1628,7 +1628,6 @@
             currentUser = {
                 username: 'Гость_' + Math.floor(Math.random() * 10000),
                 level: 1,
-                friends: 0,
                 games: 0,
                 isGuest: true
             };
@@ -1644,7 +1643,7 @@
                 document.getElementById('sidebar-status').innerHTML = '👤 <span>Гость</span>';
             } else {
                 document.getElementById('sidebar-status').innerHTML = currentUser.level + ' <span>Близкий</span>';
-                document.getElementById('profile-friends-count').textContent = Object.keys(currentUser.friends || {}).length;
+                document.getElementById('profile-friends-count').textContent = currentUser.friends ? Object.keys(currentUser.friends).length : 0;
                 
                 // Синхронизируем с Firebase
                 syncUserWithFirebase();
@@ -1718,17 +1717,25 @@
         // ==================== СИСТЕМА ДРУЗЕЙ ====================
         function searchPlayers() {
             const query = document.getElementById('search-input').value.trim().toLowerCase();
-            if (!query || query.length < 2) return;
-            
             const resultsDiv = document.getElementById('search-results');
+            
+            if (!query || query.length < 1) {
+                resultsDiv.innerHTML = '<div class="no-friends">Введите ник для поиска</div>';
+                return;
+            }
+            
             resultsDiv.innerHTML = '';
             
             const found = [];
             
-            // Ищем в локальных пользователях
+            // Ищем во всех пользователях (включая текущего)
             for (let username in users) {
-                if (username.toLowerCase().includes(query) && username !== currentUser.username) {
-                    found.push(username);
+                // Проверяем, содержит ли ник искомую строку в любом месте
+                if (username.toLowerCase().includes(query)) {
+                    // Не показываем самого себя
+                    if (username !== currentUser.username) {
+                        found.push(username);
+                    }
                 }
             }
             
@@ -1736,6 +1743,9 @@
                 resultsDiv.innerHTML = '<div class="no-friends">Ничего не найдено</div>';
                 return;
             }
+            
+            // Сортируем найденных пользователей
+            found.sort();
             
             found.forEach(username => {
                 const isFriend = currentUser.friends && currentUser.friends[username] === 'accepted';
@@ -1747,16 +1757,19 @@
                 
                 let buttonText = 'Добавить в друзья';
                 let buttonClass = 'friend-btn';
+                let disabled = false;
                 
                 if (isFriend) {
                     buttonText = '✅ В друзьях';
                     buttonClass = 'friend-btn accepted';
+                    disabled = true;
                 } else if (hasRequest) {
-                    buttonText = '📨 Заявка';
+                    buttonText = '📨 Заявка от ' + username;
                     buttonClass = 'friend-btn pending';
                 } else if (isPending) {
-                    buttonText = '⏳ Отправлено';
+                    buttonText = '⏳ Ожидание';
                     buttonClass = 'friend-btn pending';
+                    disabled = true;
                 }
                 
                 userDiv.innerHTML = `
@@ -1769,7 +1782,7 @@
                             </div>
                         </div>
                     </div>
-                    <button class="${buttonClass}" onclick="sendFriendRequest('${username}')">${buttonText}</button>
+                    <button class="${buttonClass}" onclick="sendFriendRequest('${username}')" ${disabled ? 'disabled' : ''}>${buttonText}</button>
                 `;
                 
                 resultsDiv.appendChild(userDiv);
@@ -1804,12 +1817,20 @@
             if (currentUser.isGuest) return;
             
             // Обновляем статус
+            if (!currentUser.friends) currentUser.friends = {};
             currentUser.friends[username] = 'accepted';
-            delete currentUser.friendRequests[username];
+            
+            if (currentUser.friendRequests) {
+                delete currentUser.friendRequests[username];
+            }
             
             if (users[username]) {
                 if (!users[username].friends) users[username].friends = {};
                 users[username].friends[currentUser.username] = 'accepted';
+                
+                if (users[username].friendRequests) {
+                    delete users[username].friendRequests[currentUser.username];
+                }
             }
             
             saveUsers();
@@ -1820,11 +1841,21 @@
         function rejectFriendRequest(username) {
             if (currentUser.isGuest) return;
             
-            delete currentUser.friendRequests[username];
-            delete currentUser.friends[username];
+            if (currentUser.friendRequests) {
+                delete currentUser.friendRequests[username];
+            }
+            
+            if (currentUser.friends) {
+                delete currentUser.friends[username];
+            }
             
             if (users[username]) {
-                delete users[username].friends[currentUser.username];
+                if (users[username].friends) {
+                    delete users[username].friends[currentUser.username];
+                }
+                if (users[username].friendRequests) {
+                    delete users[username].friendRequests[currentUser.username];
+                }
             }
             
             saveUsers();
@@ -1909,7 +1940,7 @@
                 return;
             }
             
-            acceptedFriends.forEach(username => {
+            acceptedFriends.sort().forEach(username => {
                 const isOnline = users[username]?.online;
                 const friendDiv = document.createElement('div');
                 friendDiv.className = `friend-card ${isOnline ? 'online' : 'offline'}`;
@@ -1961,6 +1992,9 @@
             if (page === 'friends') {
                 updateFriendRequestsUI();
                 updateFriendsUI();
+                // Очищаем поиск при переходе
+                document.getElementById('search-input').value = '';
+                document.getElementById('search-results').innerHTML = '<div class="no-friends">Введите ник для поиска</div>';
             }
             
             currentPage = page;
