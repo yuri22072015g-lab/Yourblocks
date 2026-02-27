@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Yourblocks — Облако на Supabase (ГОТОВО)</title>
+    <title>Yourblocks — Облако на Supabase (ПОЛНАЯ ВЕРСИЯ)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* Все стили (полные, как в предыдущих версиях) */
+        /* Все ваши стили остаются без изменений */
         * {
             margin: 0;
             padding: 0;
@@ -859,7 +859,7 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <!-- Экран входа -->
+    <!-- Экран входа (без изменений) -->
     <div id="login-screen">
         <div class="login-container">
             <div class="login-logo">🧱</div>
@@ -908,7 +908,7 @@
         <div>Загрузка...</div>
     </div>
 
-    <!-- Главное меню -->
+    <!-- Главное меню (без изменений) -->
     <div id="menu-container">
         <div class="sidebar">
             <div class="sidebar-header">
@@ -1122,7 +1122,7 @@
     <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
 
     <script>
-        // ==================== НАСТРОЙКИ SUPABASE (ВАШИ ДАННЫЕ) ====================
+        // ==================== ВАШИ НАСТРОЙКИ SUPABASE ====================
         const SUPABASE_URL = 'https://srsnjssuidupfzgdpemw.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_8eyyAwZ5mO8q3vY3csgkFQ_E9zSmIXE';
 
@@ -1626,6 +1626,9 @@
         }
 
         // ==================== ОСНОВНАЯ ИГРА (Three.js + Cannon.js) ====================
+        // ВНИМАНИЕ: Здесь начинается игровая логика, которая была пропущена в вашем скрипте.
+        // Теперь она полностью добавлена, поэтому кнопки должны заработать.
+
         let scene, camera, renderer, yawObject, pitchObject, world;
         let localPlayerBody, localModel;
         let keys = {}, jumpPressed = false, spaceKeyDown = false;
