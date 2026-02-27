@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Yourblocks — Глобальный мультиплеер</title>
+    <title>Yourblocks — Друзья и мультиплеер</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         * {
@@ -687,6 +687,284 @@
             z-index: 200;
         }
         
+        /* Секция друзей */
+        .friends-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .search-section {
+            background: #1e1e1e;
+            border-radius: 16px;
+            padding: 20px;
+        }
+        
+        .search-title {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .search-box input {
+            flex: 1;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 2px solid #333;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        .search-box button {
+            padding: 12px 25px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .search-box button:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+        
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 10px;
+        }
+        
+        .player-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: #333;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            transition: all 0.3s;
+        }
+        
+        .player-item:hover {
+            background: #3a3a3a;
+        }
+        
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .player-avatar-small {
+            width: 40px;
+            height: 40px;
+            background: #2a2a2a;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            border: 2px solid #4CAF50;
+        }
+        
+        .player-name {
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .player-status {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .player-status.online {
+            color: #4CAF50;
+        }
+        
+        .friend-btn {
+            padding: 8px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .friend-btn.pending {
+            background: #ffaa00;
+        }
+        
+        .friend-btn.accepted {
+            background: #4CAF50;
+        }
+        
+        .friend-btn.rejected {
+            background: #ff5555;
+        }
+        
+        .friend-btn.joined {
+            background: #4CAF50;
+        }
+        
+        .friend-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .friends-lists {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .friends-column {
+            background: #1e1e1e;
+            border-radius: 16px;
+            padding: 20px;
+        }
+        
+        .friends-column h3 {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .friends-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 10px;
+        }
+        
+        .friend-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #333;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .friend-card:hover {
+            background: #3a3a3a;
+        }
+        
+        .friend-card.online {
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .friend-card.offline {
+            border-left: 4px solid #888;
+        }
+        
+        .friend-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .friend-avatar {
+            width: 45px;
+            height: 45px;
+            background: #2a2a2a;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            border: 2px solid #4CAF50;
+        }
+        
+        .friend-details {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .friend-name {
+            font-weight: bold;
+            color: #fff;
+            font-size: 16px;
+        }
+        
+        .friend-last-seen {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .friend-last-seen.online {
+            color: #4CAF50;
+        }
+        
+        .friend-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .action-btn.accept {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .action-btn.reject {
+            background: #ff5555;
+            color: white;
+        }
+        
+        .action-btn.join {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .action-btn.remove {
+            background: #ff5555;
+            color: white;
+        }
+        
+        .action-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .no-friends {
+            color: #888;
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+        }
+        
         /* МОБИЛЬНОЕ УПРАВЛЕНИЕ */
         #mobile-controls {
             position: absolute;
@@ -703,7 +981,6 @@
             display: block;
         }
         
-        /* Левая часть экрана - джойстик */
         #left-area {
             position: absolute;
             top: 0;
@@ -716,7 +993,6 @@
             touch-action: none;
         }
         
-        /* Правая часть экрана - камера + кнопка прыжка */
         #right-area {
             position: absolute;
             top: 0;
@@ -729,7 +1005,6 @@
             touch-action: none;
         }
         
-        /* Джойстик (визуально в левой части) */
         #joystick-left {
             position: absolute;
             bottom: 40px;
@@ -758,7 +1033,6 @@
             border: 2px solid white;
         }
         
-        /* Кнопка прыжка (в правой части) */
         #jump-button {
             position: absolute;
             bottom: 40px;
@@ -787,7 +1061,6 @@
             background: rgba(255, 40, 40, 1);
         }
         
-        /* Кнопка выхода из аккаунта */
         .logout-btn {
             position: fixed;
             top: 20px;
@@ -816,7 +1089,6 @@
             transform: scale(0.95);
         }
         
-        /* Адаптация для мобильных */
         @media (max-width: 768px) {
             .sidebar {
                 width: 70px;
@@ -905,31 +1177,30 @@
                 right: 30px;
                 font-size: 16px;
             }
+            
+            .friends-lists {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script>
-        // Запрещаем контекстное меню (правый клик) на всей странице
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
             return false;
         });
         
-        // Также запрещаем стандартные сочетания клавиш для разработчика
         document.addEventListener('keydown', function(e) {
-            // F12
             if (e.key === 'F12') {
                 e.preventDefault();
                 return false;
             }
-            // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
             if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) {
                 e.preventDefault();
                 return false;
             }
-            // Ctrl+U (просмотр исходного кода)
             if (e.ctrlKey && e.key === 'U') {
                 e.preventDefault();
                 return false;
@@ -950,7 +1221,6 @@
                 <div class="login-tab" onclick="switchLoginTab('register')">Регистрация</div>
             </div>
             
-            <!-- Форма входа -->
             <div id="login-form" class="login-form active">
                 <div class="input-group">
                     <label>👤 Логин</label>
@@ -965,7 +1235,6 @@
                 <div id="login-error" class="error-message"></div>
             </div>
             
-            <!-- Форма регистрации -->
             <div id="register-form" class="login-form">
                 <div class="input-group">
                     <label>👤 Логин</label>
@@ -988,7 +1257,6 @@
     
     <!-- Главное меню -->
     <div id="menu-container">
-        <!-- Боковое меню -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <div class="logo">YOUR<span>BLOCKS</span></div>
@@ -1021,12 +1289,10 @@
             </div>
         </div>
         
-        <!-- Кнопка выхода -->
         <button class="logout-btn" onclick="logout()">
             <span>🚪</span> Выйти
         </button>
         
-        <!-- Основной контент -->
         <div class="main-content">
             <div class="content-header">
                 <h1 id="page-title">Главная страница</h1>
@@ -1036,7 +1302,6 @@
                 </div>
             </div>
             
-            <!-- Главная страница с одной игрой -->
             <div id="home-section" class="content-section active">
                 <h2 style="color: #fff; margin-bottom: 30px; text-align: center;">🔥 Игра дня</h2>
                 
@@ -1044,7 +1309,7 @@
                     <div class="game-image-large">🏃‍♂️</div>
                     <div class="game-info-large">
                         <div class="game-title-large">PARKOUR MAZE</div>
-                        <div class="game-description-large">Паркур + Лабиринт — глобальный сервер!</div>
+                        <div class="game-description-large">Паркур + Лабиринт — играй с друзьями!</div>
                         
                         <div class="game-features">
                             <div class="feature">
@@ -1056,11 +1321,11 @@
                                 <div class="feature-text"><span>лабиринт</span> справа</div>
                             </div>
                             <div class="feature">
-                                <div class="feature-icon">🌍</div>
-                                <div class="feature-text"><span>1</span> сервер для всех</div>
+                                <div class="feature-icon">👥</div>
+                                <div class="feature-text"><span>друзья</span> онлайн</div>
                             </div>
                             <div class="feature">
-                                <div class="feature-icon">👥</div>
+                                <div class="feature-icon">🌍</div>
                                 <div class="feature-text"><span id="game-players">0</span> сейчас</div>
                             </div>
                         </div>
@@ -1078,7 +1343,6 @@
                 </div>
             </div>
             
-            <!-- Профиль -->
             <div id="profile-section" class="content-section">
                 <div class="profile-header">
                     <div class="profile-avatar-large" id="profile-avatar">🧱</div>
@@ -1090,7 +1354,7 @@
                                 <div class="stat-label">Уровень</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-value">1,234</div>
+                                <div class="stat-value" id="profile-friends-count">0</div>
                                 <div class="stat-label">Друзья</div>
                             </div>
                             <div class="stat-item">
@@ -1109,7 +1373,6 @@
                 </div>
             </div>
             
-            <!-- Аватар (кастомизация) -->
             <div id="avatar-section" class="content-section">
                 <h2 style="color: #fff; margin-bottom: 20px;">Кастомизация аватара</h2>
                 
@@ -1167,12 +1430,39 @@
                 </div>
             </div>
             
-            <!-- Друзья -->
+            <!-- Секция друзей -->
             <div id="friends-section" class="content-section">
-                <div style="text-align: center; padding: 50px; color: #888;">
-                    <div style="font-size: 64px;">👥</div>
-                    <h3>Друзья</h3>
-                    <p>Добавляй друзей и играйте вместе в паркур</p>
+                <div class="friends-container">
+                    <!-- Поиск игроков -->
+                    <div class="search-section">
+                        <h3 class="search-title">🔍 Найти игроков</h3>
+                        <div class="search-box">
+                            <input type="text" id="search-input" placeholder="Введите никнейм...">
+                            <button onclick="searchPlayers()">Поиск</button>
+                        </div>
+                        <div id="search-results" class="search-results">
+                            <!-- Результаты поиска будут здесь -->
+                        </div>
+                    </div>
+                    
+                    <!-- Заявки в друзья и друзья -->
+                    <div class="friends-lists">
+                        <!-- Входящие заявки -->
+                        <div class="friends-column">
+                            <h3>📨 Заявки в друзья</h3>
+                            <div id="friend-requests" class="friends-list">
+                                <div class="no-friends">Нет входящих заявок</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Мои друзья -->
+                        <div class="friends-column">
+                            <h3>👥 Мои друзья</h3>
+                            <div id="my-friends" class="friends-list">
+                                <div class="no-friends">У вас пока нет друзей</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1182,24 +1472,17 @@
     <div id="game-container">
         <button class="game-exit-button" onclick="exitGame()">✕</button>
         <div class="exit-hint">Нажми ESC или ✕ чтобы выйти</div>
-        <div class="server-status" id="server-status">🌍 ПОДКЛЮЧЕНИЕ К СЕРВЕРУ...</div>
+        <div class="server-status" id="server-status">🌍 ПОДКЛЮЧЕНИЕ...</div>
         <div class="players-count" id="players-count">👥 1 в мире</div>
         <div class="ground-indicator onground" id="ground-indicator">🟢 НА ЗЕМЛЕ</div>
         <div class="jump-hint">👆 Левая часть - движение, правая - камера + прыжок</div>
         
-        <!-- Мобильное управление -->
         <div id="mobile-controls">
-            <!-- Левая часть экрана - джойстик -->
             <div id="left-area"></div>
-            
-            <!-- Правая часть экрана - камера + кнопка прыжка -->
             <div id="right-area"></div>
-            
-            <!-- Визуальные элементы (не перехватывают касания) -->
             <div id="joystick-left">
                 <div id="joystick-handle"></div>
             </div>
-            
             <div id="jump-button">
                 ПРЫЖОК
             </div>
@@ -1213,7 +1496,6 @@
     
     <script>
         // ==================== НАСТРОЙКИ FIREBASE ====================
-        // Используем публичный Firebase проект (можно заменить на свой)
         const firebaseConfig = {
             apiKey: "AIzaSyBNL9DMEzJPEQzYV4JN_1l3W1XqWqWqWqU",
             authDomain: "yourblocks-multiplayer.firebaseapp.com",
@@ -1224,17 +1506,17 @@
             appId: "1:123456789012:web:abc123def456"
         };
         
-        // Инициализация Firebase
         let database = null;
         let playersRef = null;
+        let usersRef = null;
         let myPlayerRef = null;
+        let myUserRef = null;
         let isConnected = false;
         
         // ==================== СИСТЕМА АККАУНТОВ ====================
         let currentUser = null;
         let users = {};
         
-        // Загружаем пользователей из localStorage
         try {
             const saved = localStorage.getItem('yourblocks_users');
             if (saved) {
@@ -1242,12 +1524,10 @@
             }
         } catch (e) {}
         
-        // Сохраняем пользователей
         function saveUsers() {
             localStorage.setItem('yourblocks_users', JSON.stringify(users));
         }
         
-        // Переключение между вкладками входа/регистрации
         function switchLoginTab(tab) {
             document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
@@ -1256,7 +1536,6 @@
             document.getElementById(tab + '-form').classList.add('active');
         }
         
-        // Обработка входа
         function handleLogin() {
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value.trim();
@@ -1280,7 +1559,6 @@
                 return;
             }
             
-            // Успешный вход
             currentUser = {
                 username: username,
                 ...users[username]
@@ -1289,7 +1567,6 @@
             loginSuccess();
         }
         
-        // Обработка регистрации
         function handleRegister() {
             const username = document.getElementById('register-username').value.trim();
             const password = document.getElementById('register-password').value.trim();
@@ -1320,7 +1597,6 @@
                 return;
             }
             
-            // Создаем нового пользователя
             const newUser = {
                 password: password,
                 level: 1,
@@ -1332,7 +1608,9 @@
                     body: '#3366ff',
                     legs: '#2244aa',
                     arms: '#2244aa'
-                }
+                },
+                friends: {}, // { друг: 'accepted' или 'pending' }
+                friendRequests: {} // входящие заявки
             };
             
             users[username] = newUser;
@@ -1346,7 +1624,6 @@
             loginSuccess();
         }
         
-        // Вход как гость
         function handleGuest() {
             currentUser = {
                 username: 'Гость_' + Math.floor(Math.random() * 10000),
@@ -1359,9 +1636,7 @@
             loginSuccess();
         }
         
-        // Успешный вход
         function loginSuccess() {
-            // Обновляем UI
             document.getElementById('sidebar-username').textContent = currentUser.username;
             document.getElementById('profile-username').textContent = currentUser.username;
             
@@ -1369,15 +1644,17 @@
                 document.getElementById('sidebar-status').innerHTML = '👤 <span>Гость</span>';
             } else {
                 document.getElementById('sidebar-status').innerHTML = currentUser.level + ' <span>Близкий</span>';
+                document.getElementById('profile-friends-count').textContent = Object.keys(currentUser.friends || {}).length;
+                
+                // Синхронизируем с Firebase
+                syncUserWithFirebase();
             }
             
-            // Применяем цвета, если есть
             if (currentUser.colors) {
                 playerColors = currentUser.colors;
                 updateAllAvatars();
             }
             
-            // Скрываем экран входа
             document.getElementById('login-screen').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('login-screen').style.display = 'none';
@@ -1385,9 +1662,7 @@
             }, 500);
         }
         
-        // Выход из аккаунта
         function logout() {
-            // Сохраняем цвета, если пользователь не гость
             if (!currentUser.isGuest && currentUser.username) {
                 users[currentUser.username].colors = playerColors;
                 saveUsers();
@@ -1395,17 +1670,268 @@
             
             currentUser = null;
             
-            // Показываем экран входа
             document.getElementById('menu-container').style.display = 'none';
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('login-screen').style.opacity = '1';
             
-            // Очищаем поля
             document.getElementById('login-username').value = '';
             document.getElementById('login-password').value = '';
             document.getElementById('register-username').value = '';
             document.getElementById('register-password').value = '';
             document.getElementById('register-confirm').value = '';
+        }
+        
+        // ==================== FIREBASE СИНХРОНИЗАЦИЯ ====================
+        function syncUserWithFirebase() {
+            if (!database || currentUser.isGuest) return;
+            
+            myUserRef = database.ref('users/' + currentUser.username);
+            
+            myUserRef.set({
+                username: currentUser.username,
+                level: currentUser.level,
+                colors: playerColors,
+                lastSeen: Date.now(),
+                online: true
+            });
+            
+            myUserRef.onDisconnect().update({
+                online: false,
+                lastSeen: Date.now()
+            });
+            
+            // Слушаем изменения в друзьях
+            myUserRef.child('friendRequests').on('value', (snapshot) => {
+                const requests = snapshot.val() || {};
+                currentUser.friendRequests = requests;
+                updateFriendRequestsUI();
+            });
+            
+            myUserRef.child('friends').on('value', (snapshot) => {
+                const friends = snapshot.val() || {};
+                currentUser.friends = friends;
+                updateFriendsUI();
+                document.getElementById('profile-friends-count').textContent = Object.keys(friends).length;
+            });
+        }
+        
+        // ==================== СИСТЕМА ДРУЗЕЙ ====================
+        function searchPlayers() {
+            const query = document.getElementById('search-input').value.trim().toLowerCase();
+            if (!query || query.length < 2) return;
+            
+            const resultsDiv = document.getElementById('search-results');
+            resultsDiv.innerHTML = '';
+            
+            const found = [];
+            
+            // Ищем в локальных пользователях
+            for (let username in users) {
+                if (username.toLowerCase().includes(query) && username !== currentUser.username) {
+                    found.push(username);
+                }
+            }
+            
+            if (found.length === 0) {
+                resultsDiv.innerHTML = '<div class="no-friends">Ничего не найдено</div>';
+                return;
+            }
+            
+            found.forEach(username => {
+                const isFriend = currentUser.friends && currentUser.friends[username] === 'accepted';
+                const hasRequest = currentUser.friendRequests && currentUser.friendRequests[username];
+                const isPending = currentUser.friends && currentUser.friends[username] === 'pending';
+                
+                const userDiv = document.createElement('div');
+                userDiv.className = 'player-item';
+                
+                let buttonText = 'Добавить в друзья';
+                let buttonClass = 'friend-btn';
+                
+                if (isFriend) {
+                    buttonText = '✅ В друзьях';
+                    buttonClass = 'friend-btn accepted';
+                } else if (hasRequest) {
+                    buttonText = '📨 Заявка';
+                    buttonClass = 'friend-btn pending';
+                } else if (isPending) {
+                    buttonText = '⏳ Отправлено';
+                    buttonClass = 'friend-btn pending';
+                }
+                
+                userDiv.innerHTML = `
+                    <div class="player-info">
+                        <div class="player-avatar-small">🧱</div>
+                        <div>
+                            <div class="player-name">${username}</div>
+                            <div class="player-status ${users[username]?.online ? 'online' : ''}">
+                                ${users[username]?.online ? '🟢 В сети' : '⚪ Офлайн'}
+                            </div>
+                        </div>
+                    </div>
+                    <button class="${buttonClass}" onclick="sendFriendRequest('${username}')">${buttonText}</button>
+                `;
+                
+                resultsDiv.appendChild(userDiv);
+            });
+        }
+        
+        function sendFriendRequest(targetUsername) {
+            if (currentUser.isGuest) {
+                alert('Гости не могут добавлять в друзья');
+                return;
+            }
+            
+            const targetUser = users[targetUsername];
+            if (!targetUser) return;
+            
+            // Отправляем заявку
+            if (!targetUser.friendRequests) targetUser.friendRequests = {};
+            targetUser.friendRequests[currentUser.username] = 'pending';
+            
+            // Обновляем статус у текущего пользователя
+            if (!currentUser.friends) currentUser.friends = {};
+            currentUser.friends[targetUsername] = 'pending';
+            
+            saveUsers();
+            
+            // Обновляем UI
+            searchPlayers();
+            alert(`Заявка отправлена пользователю ${targetUsername}`);
+        }
+        
+        function acceptFriendRequest(username) {
+            if (currentUser.isGuest) return;
+            
+            // Обновляем статус
+            currentUser.friends[username] = 'accepted';
+            delete currentUser.friendRequests[username];
+            
+            if (users[username]) {
+                if (!users[username].friends) users[username].friends = {};
+                users[username].friends[currentUser.username] = 'accepted';
+            }
+            
+            saveUsers();
+            updateFriendRequestsUI();
+            updateFriendsUI();
+        }
+        
+        function rejectFriendRequest(username) {
+            if (currentUser.isGuest) return;
+            
+            delete currentUser.friendRequests[username];
+            delete currentUser.friends[username];
+            
+            if (users[username]) {
+                delete users[username].friends[currentUser.username];
+            }
+            
+            saveUsers();
+            updateFriendRequestsUI();
+        }
+        
+        function removeFriend(username) {
+            if (currentUser.isGuest) return;
+            
+            delete currentUser.friends[username];
+            
+            if (users[username]) {
+                delete users[username].friends[currentUser.username];
+            }
+            
+            saveUsers();
+            updateFriendsUI();
+        }
+        
+        function joinFriend(username) {
+            if (!users[username]?.online) {
+                alert('Друг не в сети');
+                return;
+            }
+            
+            // Сохраняем, что мы хотим присоединиться к другу
+            sessionStorage.setItem('joinFriend', username);
+            
+            // Запускаем игру
+            startGame();
+        }
+        
+        function updateFriendRequestsUI() {
+            const requestsDiv = document.getElementById('friend-requests');
+            requestsDiv.innerHTML = '';
+            
+            if (!currentUser.friendRequests || Object.keys(currentUser.friendRequests).length === 0) {
+                requestsDiv.innerHTML = '<div class="no-friends">Нет входящих заявок</div>';
+                return;
+            }
+            
+            for (let username in currentUser.friendRequests) {
+                const requestDiv = document.createElement('div');
+                requestDiv.className = 'friend-card online';
+                
+                requestDiv.innerHTML = `
+                    <div class="friend-info">
+                        <div class="friend-avatar">🧱</div>
+                        <div class="friend-details">
+                            <span class="friend-name">${username}</span>
+                            <span class="friend-last-seen online">🟢 Хочет дружить</span>
+                        </div>
+                    </div>
+                    <div class="friend-actions">
+                        <button class="action-btn accept" onclick="acceptFriendRequest('${username}')">✓ Принять</button>
+                        <button class="action-btn reject" onclick="rejectFriendRequest('${username}')">✗ Отклонить</button>
+                    </div>
+                `;
+                
+                requestsDiv.appendChild(requestDiv);
+            }
+        }
+        
+        function updateFriendsUI() {
+            const friendsDiv = document.getElementById('my-friends');
+            friendsDiv.innerHTML = '';
+            
+            if (!currentUser.friends || Object.keys(currentUser.friends).length === 0) {
+                friendsDiv.innerHTML = '<div class="no-friends">У вас пока нет друзей</div>';
+                return;
+            }
+            
+            const acceptedFriends = [];
+            for (let username in currentUser.friends) {
+                if (currentUser.friends[username] === 'accepted') {
+                    acceptedFriends.push(username);
+                }
+            }
+            
+            if (acceptedFriends.length === 0) {
+                friendsDiv.innerHTML = '<div class="no-friends">У вас пока нет друзей</div>';
+                return;
+            }
+            
+            acceptedFriends.forEach(username => {
+                const isOnline = users[username]?.online;
+                const friendDiv = document.createElement('div');
+                friendDiv.className = `friend-card ${isOnline ? 'online' : 'offline'}`;
+                
+                friendDiv.innerHTML = `
+                    <div class="friend-info" onclick="joinFriend('${username}')">
+                        <div class="friend-avatar">🧱</div>
+                        <div class="friend-details">
+                            <span class="friend-name">${username}</span>
+                            <span class="friend-last-seen ${isOnline ? 'online' : ''}">
+                                ${isOnline ? '🟢 В сети' : '⚪ Офлайн'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="friend-actions">
+                        <button class="action-btn join" onclick="joinFriend('${username}')">🎮 Играть</button>
+                        <button class="action-btn remove" onclick="removeFriend('${username}')">✗</button>
+                    </div>
+                `;
+                
+                friendsDiv.appendChild(friendDiv);
+            });
         }
         
         // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
@@ -1417,7 +1943,6 @@
             arms: '#2244aa'
         };
         
-        // ==================== УПРАВЛЕНИЕ СТРАНИЦАМИ ====================
         function switchPage(page) {
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             event.currentTarget.classList.add('active');
@@ -1433,6 +1958,11 @@
             document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
             document.getElementById(page + '-section').classList.add('active');
             
+            if (page === 'friends') {
+                updateFriendRequestsUI();
+                updateFriendsUI();
+            }
+            
             currentPage = page;
         }
         
@@ -1440,7 +1970,6 @@
             document.querySelector('.game-card-large').classList.add('selected');
         }
         
-        // ==================== КАСТОМИЗАЦИЯ ====================
         function setPartColor(part, color, element) {
             playerColors[part] = color;
             
@@ -1450,7 +1979,6 @@
             
             updateAllAvatars();
             
-            // Сохраняем цвета для пользователя
             if (currentUser && !currentUser.isGuest) {
                 users[currentUser.username].colors = playerColors;
                 saveUsers();
@@ -1466,27 +1994,24 @@
         }
         
         // ==================== ГЛОБАЛЬНЫЙ МУЛЬТИПЛЕЕР ====================
-        let otherPlayers = new Map(); // модельки других игроков
+        let otherPlayers = new Map();
         let myPlayerId = null;
+        let joinTarget = null;
         
         function initFirebase() {
             return new Promise((resolve) => {
                 try {
-                    // Инициализируем Firebase
                     const app = firebase.initializeApp(firebaseConfig);
                     database = firebase.database();
                     
-                    // Ссылка на всех игроков в игре PARKOUR MAZE
                     playersRef = database.ref('parkour_maze_players');
                     
-                    // Проверяем подключение
                     database.ref('.info/connected').on('value', (snap) => {
                         if (snap.val() === true) {
                             isConnected = true;
                             document.getElementById('server-status').textContent = '🌍 НА ГЛОБАЛЬНОМ СЕРВЕРЕ';
                             document.getElementById('server-status').style.color = '#4CAF50';
                             
-                            // Регистрируем игрока при подключении
                             if (myPlayerId) {
                                 registerPlayer();
                             }
@@ -1499,7 +2024,7 @@
                     
                     resolve();
                 } catch (e) {
-                    console.log('Firebase не доступен, играем в оффлайн');
+                    console.log('Firebase не доступен');
                     document.getElementById('server-status').textContent = '🌍 ОФФЛАЙН РЕЖИМ';
                     document.getElementById('server-status').style.color = '#ff5555';
                     resolve();
@@ -1510,28 +2035,28 @@
         function registerPlayer() {
             if (!playersRef || !isConnected) return;
             
-            // Уникальный ID для этого игрока
-            myPlayerId = currentUser ? currentUser.username + '_' + Date.now() : 'player_' + Date.now();
+            // Проверяем, не хотим ли мы присоединиться к другу
+            const joinFriend = sessionStorage.getItem('joinFriend');
+            let startPos = { x: 0, y: 5, z: 10 };
             
-            // Ссылка на текущего игрока
+            if (joinFriend && users[joinFriend]?.online) {
+                // TODO: Получить позицию друга из Firebase
+                startPos = { x: 0, y: 5, z: 10 };
+                sessionStorage.removeItem('joinFriend');
+            }
+            
+            myPlayerId = currentUser ? currentUser.username + '_' + Date.now() : 'player_' + Date.now();
             myPlayerRef = database.ref('parkour_maze_players/' + myPlayerId);
             
-            // Отправляем данные игрока
             myPlayerRef.set({
                 username: currentUser ? currentUser.username : 'Игрок',
-                position: {
-                    x: 0,
-                    y: 5,
-                    z: 10
-                },
+                position: startPos,
                 colors: playerColors,
                 lastSeen: Date.now()
             });
             
-            // Автоматически удаляем игрока при отключении
             myPlayerRef.onDisconnect().remove();
             
-            // Слушаем новых игроков
             playersRef.on('child_added', (snapshot) => {
                 const id = snapshot.key;
                 const data = snapshot.val();
@@ -1540,7 +2065,6 @@
                 if (!data || !data.position) return;
                 
                 if (!otherPlayers.has(id)) {
-                    // Создаем нового игрока
                     const model = createMultiplayerModel(data.colors || playerColors);
                     if (model && scene) {
                         model.position.set(data.position.x, data.position.y, data.position.z);
@@ -1557,7 +2081,6 @@
                 }
             });
             
-            // Обновляем позиции игроков
             playersRef.on('child_changed', (snapshot) => {
                 const id = snapshot.key;
                 const data = snapshot.val();
@@ -1573,7 +2096,6 @@
                 }
             });
             
-            // Удаляем отключившихся игроков
             playersRef.on('child_removed', (snapshot) => {
                 const id = snapshot.key;
                 
@@ -1587,7 +2109,6 @@
                 }
             });
             
-            // Обновляем счетчик каждые 2 секунды
             setInterval(() => {
                 if (playersRef && isConnected) {
                     playersRef.once('value', (snapshot) => {
@@ -1598,19 +2119,6 @@
                     });
                 }
             }, 2000);
-        }
-        
-        function updatePlayerPosition() {
-            if (!myPlayerRef || !isConnected || !localPlayerBody) return;
-            
-            myPlayerRef.update({
-                position: {
-                    x: localPlayerBody.position.x,
-                    y: localPlayerBody.position.y,
-                    z: localPlayerBody.position.z
-                },
-                lastSeen: Date.now()
-            });
         }
         
         function updatePlayersCount() {
@@ -1675,7 +2183,6 @@
         let deathBlocks = [];
         let walkTime = 0;
         
-        // Мобильное управление
         let joystickActive = false;
         let joystickVector = { x: 0, y: 0 };
         let jumpButtonPressed = false;
@@ -1686,12 +2193,10 @@
             document.getElementById('menu-container').style.display = 'none';
             document.getElementById('game-container').classList.add('active');
             
-            // Показываем мобильное управление только на телефонах
             if (window.innerWidth <= 768) {
                 document.getElementById('mobile-controls').classList.add('active');
             }
             
-            // Инициализируем Firebase
             await initFirebase();
             
             initThreeJSGame(document.getElementById('game-canvas'));
@@ -1699,7 +2204,6 @@
         }
         
         function exitGame() {
-            // Удаляем себя из Firebase
             if (myPlayerRef) {
                 myPlayerRef.remove();
             }
@@ -1724,7 +2228,6 @@
             }
         });
         
-        // ==================== МОБИЛЬНОЕ УПРАВЛЕНИЕ ====================
         function initMobileControls() {
             const leftArea = document.getElementById('left-area');
             const rightArea = document.getElementById('right-area');
@@ -1732,7 +2235,6 @@
             const handle = document.getElementById('joystick-handle');
             const jumpBtn = document.getElementById('jump-button');
             
-            // Левая область - джойстик
             leftArea.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 joystickActive = true;
@@ -1775,7 +2277,6 @@
                 joystickVector.y = dy / maxDistance;
             }
             
-            // Правая область - камера
             rightArea.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 cameraTouchActive = true;
@@ -1806,7 +2307,6 @@
                 cameraTouchActive = false;
             });
             
-            // Кнопка прыжка
             jumpBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1824,20 +2324,16 @@
         
         // ==================== THREE.JS ИГРА ====================
         function initThreeJSGame(container) {
-            // Сцена
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87ceeb);
             
-            // Камера
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2000);
             
-            // Рендерер
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
             container.appendChild(renderer.domElement);
             
-            // Камера с поворотом
             yawObject = new THREE.Object3D();
             pitchObject = new THREE.Object3D();
             yawObject.add(pitchObject);
@@ -1847,7 +2343,6 @@
             let cameraDistance = 8;
             camera.position.set(0, 3, cameraDistance);
             
-            // Освещение
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
             
@@ -1856,7 +2351,6 @@
             dirLight.castShadow = true;
             scene.add(dirLight);
             
-            // Физика
             world = new CANNON.World();
             world.gravity.set(0, -9.82, 0);
             
@@ -1870,12 +2364,9 @@
             world.addContactMaterial(contactMaterial);
             world.defaultContactMaterial = contactMaterial;
             
-            // Массивы для красных блоков
             deathBlocks = [];
             
-            // ==================== СОЗДАНИЕ УРОВНЯ ====================
             function createLevel() {
-                // Базовая земля
                 const groundMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(80, 2, 80),
                     new THREE.MeshStandardMaterial({ color: 0x2a3a4a })
@@ -1889,7 +2380,6 @@
                 groundBody.position.copy(groundMesh.position);
                 world.addBody(groundBody);
                 
-                // ===== ЛАБИРИНТ (СПРАВА) =====
                 const mazeStartX = 15;
                 const mazeStartZ = -20;
                 
@@ -1921,7 +2411,6 @@
                     world.addBody(wallBody);
                 });
                 
-                // Вход в лабиринт
                 const entranceMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(2, 1, 2),
                     new THREE.MeshStandardMaterial({ color: 0x4CAF50 })
@@ -1931,7 +2420,6 @@
                 entranceMesh.receiveShadow = true;
                 scene.add(entranceMesh);
                 
-                // Красные блоки внутри лабиринта
                 for (let i = 0; i < 5; i++) {
                     const deathMesh = new THREE.Mesh(
                         new THREE.BoxGeometry(1.5, 0.5, 1.5),
@@ -1949,7 +2437,6 @@
                     deathBlocks.push(deathBody);
                 }
                 
-                // ===== ПАРКУР (СЛЕВА) =====
                 for (let i = 0; i < 20; i++) {
                     const platformMesh = new THREE.Mesh(
                         new THREE.BoxGeometry(3, 0.5, 3),
@@ -1993,7 +2480,6 @@
                     }
                 }
                 
-                // Финишная зона
                 const finishMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(5, 0.5, 5),
                     new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0x442200 })
@@ -2006,7 +2492,6 @@
             
             createLevel();
             
-            // Игрок
             localPlayerBody = new CANNON.Body({
                 mass: 5,
                 material: playerMaterial,
@@ -2018,7 +2503,6 @@
             localPlayerBody.position.set(0, 5, 10);
             world.addBody(localPlayerBody);
             
-            // Модель игрока с кастомизацией
             localModel = createCustomPlayerModel();
             scene.add(localModel);
             
@@ -2062,7 +2546,6 @@
                 return group;
             }
             
-            // Управление с клавиатуры
             keys = {};
             jumpPressed = false;
             spaceKeyDown = false;
@@ -2084,7 +2567,6 @@
                 }
             });
             
-            // Мышь для поворота на ПК
             let mouseDown = false;
             document.addEventListener("mousedown", (e) => {
                 if (e.button === 2) mouseDown = true;
@@ -2099,19 +2581,15 @@
                 pitchObject.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitchObject.rotation.x));
             });
             
-            // Спавн и смерть
             const spawnPosition = new CANNON.Vec3(0, 5, 10);
             const deathHeight = -10;
             
-            // Индикатор на земле
             const groundIndicator = document.getElementById('ground-indicator');
             
-            // Функция проверки на земле
             function isOnGround() {
                 return Math.abs(localPlayerBody.velocity.y) < 0.1;
             }
             
-            // Анимация
             walkTime = 0;
             let lastUpdateTime = 0;
             
@@ -2121,7 +2599,6 @@
                 const delta = 0.016;
                 world.step(1 / 60, delta, 3);
                 
-                // Проверка смерти
                 let dead = false;
                 
                 if (localPlayerBody.position.y < deathHeight) {
@@ -2152,7 +2629,6 @@
                     localPlayerBody.velocity.set(0, 0, 0);
                 }
                 
-                // Движение
                 const moveSpeed = 12;
                 let moveX = 0, moveZ = 0;
                 
@@ -2186,7 +2662,6 @@
                 localPlayerBody.velocity.x = (forward.x * moveZ + right.x * moveX) * moveSpeed;
                 localPlayerBody.velocity.z = (forward.z * moveZ + right.z * moveX) * moveSpeed;
                 
-                // Прыжок
                 const onGround = isOnGround();
                 
                 if (onGround) {
@@ -2210,7 +2685,6 @@
                     document.getElementById('jump-button').classList.remove('active');
                 }
                 
-                // Отправляем позицию в Firebase (каждые 100мс)
                 const now = Date.now();
                 if (now - lastUpdateTime > 100 && isConnected && myPlayerRef) {
                     myPlayerRef.update({
@@ -2224,14 +2698,12 @@
                     lastUpdateTime = now;
                 }
                 
-                // Обновляем позиции других игроков
                 otherPlayers.forEach((player) => {
                     if (player.model && player.targetPos) {
                         player.model.position.lerp(player.targetPos, 0.3);
                     }
                 });
                 
-                // Анимация
                 const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
                 if (moving) walkTime += delta * 12;
                 
@@ -2255,7 +2727,6 @@
                     }
                 }
                 
-                // Камера
                 camera.position.set(0, 3, cameraDistance);
                 localModel.position.copy(localPlayerBody.position);
                 yawObject.position.copy(localPlayerBody.position);
