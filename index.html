@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour — РАБОЧИЙ мультиплеер v2</title>
+    <title>3D Parkour — P2P мультиплеер (WebRTC)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { 
@@ -77,20 +77,51 @@
             z-index: 100;
         }
         
-        #debug-info {
+        #room-info {
             position: absolute;
-            bottom: 200px;
+            top: 120px;
             left: 15px;
             background: rgba(0,0,0,0.7);
             color: #fff;
             padding: 8px 14px;
-            border-radius: 30px;
+            border-radius: 20px;
             font-size: 12px;
             z-index: 100;
             border: 1px solid #ffaa00;
-            display: block;
-            max-width: 250px;
+            max-width: 200px;
             word-break: break-word;
+        }
+        
+        #room-input {
+            position: absolute;
+            top: 180px;
+            left: 15px;
+            z-index: 100;
+            display: flex;
+            gap: 5px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px;
+            border-radius: 20px;
+            border: 1px solid #4CAF50;
+        }
+        
+        #room-input input {
+            padding: 8px;
+            border-radius: 15px;
+            border: none;
+            background: rgba(255,255,255,0.9);
+            width: 120px;
+            font-size: 12px;
+        }
+        
+        #room-input button {
+            padding: 8px 15px;
+            border-radius: 15px;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
         }
         
         /* Левый джойстик */
@@ -178,24 +209,27 @@
             }
         }
     </style>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- PeerJS для P2P соединения -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div id="ui">
         ⚡ <span>WASD</span> (ПК) · <span>Джойстик</span> (телефон)<br>
-        🌐 <span>РАБОЧИЙ МУЛЬТИПЛЕЕР v2</span> — все видят всех<br>
+        🌐 <span>P2P МУЛЬТИПЛЕЕР</span> — прямое соединение<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span>
     </div>
     <div id="players-count">
-        👥 <span id="player-counter">0</span> онлайн
+        👥 <span id="player-counter">1</span> в комнате
     </div>
     <div id="connection-status">
-        🔴 Подключение...
+        🔴 Ожидание...
     </div>
-    <div id="debug-info">
-        Инициализация...
+    <div id="room-info">
+        🆔 Ваш ID: <span id="peer-id">генерация...</span>
+    </div>
+    <div id="room-input">
+        <input type="text" id="peer-input" placeholder="ID друга">
+        <button id="connect-btn">Подключиться</button>
     </div>
     <div id="instruction">
         👆 1 палец: поворот камеры<br>
@@ -217,119 +251,149 @@
 
     <script>
         (function() {
-            // ==================== НАСТРОЙКИ FIREBASE ====================
-            // Используем публичный тестовый Firebase проект который ТОЧНО РАБОТАЕТ
-            const firebaseConfig = {
-                apiKey: "AIzaSyBkKkKkKkKkKkKkKkKkKkKkKkKkKkKkKkKk",
-                authDomain: "multiplayer-3d-game-12345.firebaseapp.com",
-                databaseURL: "https://multiplayer-3d-game-12345-default-rtdb.firebaseio.com",
-                projectId: "multiplayer-3d-game-12345",
-                storageBucket: "multiplayer-3d-game-12345.appspot.com",
-                messagingSenderId: "123456789012",
-                appId: "1:123456789012:web:abc123def456"
-            };
+            // ==================== P2P СОЕДИНЕНИЕ ====================
+            const peer = new Peer({
+                host: 'peerjs-server.herokuapp.com',
+                port: 443,
+                secure: true,
+                debug: 2
+            });
             
-            // ==================== ID ИГРОКА ====================
-            const playerId = 'player_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+            const connections = new Map(); // активные соединения
+            let myId = '';
+            let roomLeader = false;
             
-            // ==================== ПЕРЕМЕННЫЕ ====================
-            let database = null;
-            let playersRef = null;
-            let myPlayerRef = null;
-            let connectionStatus = document.getElementById('connection-status');
-            let debugInfo = document.getElementById('debug-info');
-            let isConnected = false;
+            const connectionStatus = document.getElementById('connection-status');
+            const peerIdSpan = document.getElementById('peer-id');
+            const playerCounter = document.getElementById('player-counter');
             
-            debugInfo.innerHTML = '⏳ Инициализация...';
+            // Получаем свой ID
+            peer.on('open', (id) => {
+                myId = id;
+                peerIdSpan.textContent = id;
+                connectionStatus.innerHTML = '🟢 Ожидание подключений';
+                connectionStatus.style.color = '#0f0';
+                connectionStatus.style.borderColor = '#0f0';
+            });
             
-            // ==================== ПРОВЕРКА ИНТЕРНЕТА ====================
-            function checkInternet() {
-                return navigator.onLine;
-            }
+            // Обработка входящих соединений
+            peer.on('connection', (conn) => {
+                connectionStatus.innerHTML = '🟡 Подключение...';
+                
+                conn.on('open', () => {
+                    connections.set(conn.peer, conn);
+                    connectionStatus.innerHTML = '🟢 Игрок подключился';
+                    playerCounter.textContent = connections.size + 1;
+                    
+                    // Отправляем свою позицию новому игроку
+                    sendPosition(conn);
+                    
+                    // Обработка входящих данных
+                    conn.on('data', (data) => {
+                        handlePlayerData(conn.peer, data);
+                    });
+                    
+                    conn.on('close', () => {
+                        connections.delete(conn.peer);
+                        removeOtherPlayer(conn.peer);
+                        playerCounter.textContent = connections.size + 1;
+                        connectionStatus.innerHTML = '🟡 Игрок отключился';
+                    });
+                });
+            });
             
-            if (!checkInternet()) {
-                debugInfo.innerHTML = '❌ Нет интернета';
-                connectionStatus.innerHTML = '🔴 Нет интернета';
-            }
+            // Подключение к другому игроку
+            document.getElementById('connect-btn').addEventListener('click', () => {
+                const targetId = document.getElementById('peer-input').value.trim();
+                if (!targetId) return;
+                
+                const conn = peer.connect(targetId);
+                
+                conn.on('open', () => {
+                    connections.set(targetId, conn);
+                    connectionStatus.innerHTML = '🟢 Подключено к ' + targetId.substring(0, 8);
+                    playerCounter.textContent = connections.size + 1;
+                    
+                    // Обработка входящих данных
+                    conn.on('data', (data) => {
+                        handlePlayerData(targetId, data);
+                    });
+                    
+                    conn.on('close', () => {
+                        connections.delete(targetId);
+                        removeOtherPlayer(targetId);
+                        playerCounter.textContent = connections.size + 1;
+                    });
+                });
+            });
             
-            // ==================== ИНИЦИАЛИЗАЦИЯ FIREBASE ====================
-            try {
-                debugInfo.innerHTML = '🔄 Инициализация Firebase...';
+            // Отправка позиции всем игрокам
+            function broadcastPosition() {
+                if (connections.size === 0) return;
                 
-                // Инициализируем Firebase
-                const app = firebase.initializeApp(firebaseConfig);
-                database = firebase.database();
+                const data = {
+                    type: 'position',
+                    x: localPlayerBody.position.x,
+                    y: localPlayerBody.position.y,
+                    z: localPlayerBody.position.z,
+                    walkTime: walkTime,
+                    moving: Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1
+                };
                 
-                // Ссылка на всех игроков
-                playersRef = database.ref('players');
-                
-                // Ссылка на текущего игрока
-                myPlayerRef = database.ref('players/' + playerId);
-                
-                connectionStatus.innerHTML = '🟡 Подключаемся...';
-                connectionStatus.style.color = 'yellow';
-                connectionStatus.style.borderColor = 'yellow';
-                
-                debugInfo.innerHTML = '✅ Firebase инициализирован, ждем подключения...';
-                
-                // Проверяем подключение к Firebase
-                const connectedRef = database.ref('.info/connected');
-                connectedRef.on('value', (snap) => {
-                    if (snap.val() === true) {
-                        isConnected = true;
-                        connectionStatus.innerHTML = '🟢 В сети';
-                        connectionStatus.style.color = '#0f0';
-                        connectionStatus.style.borderColor = '#0f0';
-                        debugInfo.innerHTML = '✅ Подключено к серверу!';
-                        
-                        // Регистрируем игрока
-                        registerPlayer();
-                    } else {
-                        isConnected = false;
-                        connectionStatus.innerHTML = '🔴 Нет соединения';
-                        connectionStatus.style.color = 'red';
-                        connectionStatus.style.borderColor = 'red';
-                        debugInfo.innerHTML = '❌ Нет соединения с сервером. Проверьте интернет или VPN.';
+                connections.forEach((conn) => {
+                    if (conn.open) {
+                        conn.send(data);
                     }
-                }, (error) => {
-                    debugInfo.innerHTML = '❌ Ошибка подключения: ' + error.message;
                 });
-                
-            } catch (e) {
-                console.error('Firebase init error:', e);
-                connectionStatus.innerHTML = '🔴 Ошибка Firebase';
-                connectionStatus.style.color = 'red';
-                connectionStatus.style.borderColor = 'red';
-                debugInfo.innerHTML = '❌ Ошибка: ' + e.message;
             }
             
-            // ==================== РЕГИСТРАЦИЯ ИГРОКА ====================
-            function registerPlayer() {
-                if (!myPlayerRef) return;
+            // Отправка позиции конкретному игроку
+            function sendPosition(conn) {
+                if (!conn.open) return;
                 
-                // Случайный цвет
-                const playerColor = Math.random();
-                
-                // Добавляем себя
-                myPlayerRef.set({
-                    position: {
-                        x: 0,
-                        y: 8,
-                        z: 5
-                    },
-                    color: playerColor,
-                    walkTime: 0,
-                    moving: false,
-                    lastSeen: Date.now(),
-                    connected: true
-                }).then(() => {
-                    debugInfo.innerHTML = '✅ Игрок зарегистрирован, ID: ' + playerId.substring(0, 8);
-                }).catch((error) => {
-                    debugInfo.innerHTML = '❌ Ошибка регистрации: ' + error.message;
+                conn.send({
+                    type: 'position',
+                    x: localPlayerBody.position.x,
+                    y: localPlayerBody.position.y,
+                    z: localPlayerBody.position.z,
+                    walkTime: walkTime,
+                    moving: Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1
                 });
-                
-                // При отключении
-                myPlayerRef.onDisconnect().remove();
+            }
+            
+            // ==================== УПРАВЛЕНИЕ ИГРОКАМИ ====================
+            const otherPlayers = new Map(); // id -> { model, targetPos, walkTime, moving }
+            
+            function handlePlayerData(id, data) {
+                if (data.type === 'position') {
+                    if (!otherPlayers.has(id)) {
+                        // Создаем нового игрока
+                        const model = createPlayerModel(Math.random());
+                        model.position.set(data.x, data.y, data.z);
+                        scene.add(model);
+                        
+                        otherPlayers.set(id, {
+                            model: model,
+                            targetPos: new THREE.Vector3(data.x, data.y, data.z),
+                            walkTime: data.walkTime || 0,
+                            moving: data.moving || false
+                        });
+                    } else {
+                        // Обновляем существующего
+                        const player = otherPlayers.get(id);
+                        player.targetPos.set(data.x, data.y, data.z);
+                        player.walkTime = data.walkTime || 0;
+                        player.moving = data.moving || false;
+                    }
+                }
+            }
+            
+            function removeOtherPlayer(id) {
+                if (otherPlayers.has(id)) {
+                    const player = otherPlayers.get(id);
+                    scene.remove(player.model);
+                    otherPlayers.delete(id);
+                }
             }
             
             // ==================== СЦЕНА ====================
@@ -525,123 +589,6 @@
             const localColor = Math.random();
             const localModel = createPlayerModel(localColor);
             scene.add(localModel);
-
-            // ==================== ДРУГИЕ ИГРОКИ ====================
-            const otherPlayers = new Map();
-            
-            // ==================== FIREBASE СИНХРОНИЗАЦИЯ ====================
-            if (database && playersRef) {
-                
-                // Слушаем новых игроков
-                playersRef.on('child_added', (snapshot) => {
-                    const id = snapshot.key;
-                    const data = snapshot.val();
-                    
-                    // Игнорируем себя
-                    if (id === playerId) return;
-                    
-                    // Проверяем, что данные валидны
-                    if (!data || !data.position) return;
-                    
-                    // Если такого игрока еще нет - создаем
-                    if (!otherPlayers.has(id)) {
-                        console.log('Новый игрок:', id, data.color);
-                        debugInfo.innerHTML = '👤 Новый игрок: ' + id.substring(0, 8);
-                        
-                        const model = createPlayerModel(data.color || 0.3);
-                        model.position.set(data.position.x, data.position.y, data.position.z);
-                        scene.add(model);
-                        
-                        otherPlayers.set(id, {
-                            model: model,
-                            targetPos: new THREE.Vector3(data.position.x, data.position.y, data.position.z),
-                            walkTime: data.walkTime || 0,
-                            moving: data.moving || false,
-                            lastUpdate: Date.now()
-                        });
-                        
-                        updatePlayerCounter();
-                    }
-                });
-                
-                // Обновляем существующих игроков
-                playersRef.on('child_changed', (snapshot) => {
-                    const id = snapshot.key;
-                    const data = snapshot.val();
-                    
-                    if (id === playerId) return;
-                    if (!data || !data.position) return;
-                    
-                    if (otherPlayers.has(id)) {
-                        const player = otherPlayers.get(id);
-                        player.targetPos.set(data.position.x, data.position.y, data.position.z);
-                        player.walkTime = data.walkTime || 0;
-                        player.moving = data.moving || false;
-                        player.lastUpdate = Date.now();
-                    }
-                });
-                
-                // Удаляем отключившихся игроков
-                playersRef.on('child_removed', (snapshot) => {
-                    const id = snapshot.key;
-                    
-                    if (id === playerId) return;
-                    
-                    if (otherPlayers.has(id)) {
-                        const player = otherPlayers.get(id);
-                        scene.remove(player.model);
-                        otherPlayers.delete(id);
-                        debugInfo.innerHTML = '👋 Игрок ушел: ' + id.substring(0, 8);
-                        updatePlayerCounter();
-                    }
-                });
-                
-                // Функция обновления счетчика игроков
-                function updatePlayerCounter() {
-                    playersRef.once('value', (snapshot) => {
-                        const count = snapshot.numChildren();
-                        document.getElementById('player-counter').textContent = count;
-                    });
-                }
-                
-                // Периодически обновляем свою позицию
-                setInterval(() => {
-                    if (!isConnected || !myPlayerRef) return;
-                    
-                    const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || 
-                                  Math.abs(localPlayerBody.velocity.z) > 0.1;
-                    
-                    myPlayerRef.update({
-                        position: {
-                            x: localPlayerBody.position.x,
-                            y: localPlayerBody.position.y,
-                            z: localPlayerBody.position.z
-                        },
-                        walkTime: walkTime,
-                        moving: moving,
-                        lastSeen: Date.now()
-                    }).catch((error) => {
-                        console.log('Ошибка обновления:', error);
-                    });
-                }, 100);
-                
-                // Очистка неактивных игроков
-                setInterval(() => {
-                    if (!isConnected) return;
-                    
-                    const now = Date.now();
-                    
-                    // Удаляем неактивных игроков из памяти
-                    otherPlayers.forEach((player, id) => {
-                        if (now - player.lastUpdate > 5000) {
-                            scene.remove(player.model);
-                            otherPlayers.delete(id);
-                        }
-                    });
-                    
-                    updatePlayerCounter();
-                }, 2000);
-            }
 
             // ==================== МОБИЛЬНОЕ УПРАВЛЕНИЕ ====================
             
@@ -980,6 +927,11 @@
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
             });
+
+            // Отправка позиции 10 раз в секунду
+            setInterval(() => {
+                broadcastPosition();
+            }, 100);
 
         })();
     </script>
