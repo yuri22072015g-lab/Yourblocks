@@ -662,21 +662,6 @@
             backdrop-filter: blur(5px);
         }
         
-        .server-status {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 200;
-            background: rgba(0,0,0,0.7);
-            color: #4CAF50;
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-size: 14px;
-            border: 2px solid #4CAF50;
-            backdrop-filter: blur(5px);
-        }
-        
         .jump-hint {
             position: absolute;
             bottom: 150px;
@@ -871,12 +856,6 @@
                 width: 60px;
                 height: 60px;
                 font-size: 30px;
-            }
-            
-            .server-status {
-                font-size: 12px;
-                padding: 5px 10px;
-                top: 10px;
             }
             
             .players-count {
@@ -1181,7 +1160,6 @@
     <div id="game-container">
         <button class="game-exit-button" onclick="exitGame()">✕</button>
         <div class="exit-hint">Нажми ESC или ✕ чтобы выйти</div>
-        <div class="server-status" id="server-status">🔵 ПОДКЛЮЧЕНИЕ...</div>
         <div class="players-count" id="players-count">👥 1/10</div>
         <div class="ground-indicator onground" id="ground-indicator">🟢 НА ЗЕМЛЕ</div>
         <div class="jump-hint">👆 Левая часть - движение, правая - камера + прыжок</div>
@@ -1446,207 +1424,34 @@
             });
         }
         
-        // ==================== МУЛЬТИПЛЕЕР ====================
+        // ==================== МУЛЬТИПЛЕЕР (УПРОЩЕННЫЙ) ====================
         let peer = null;
-        let connections = new Map(); // активные соединения
-        let otherPlayers = new Map(); // модельки других игроков
-        let myPlayerId = null;
-        let isHost = false;
+        let connections = new Map();
+        let otherPlayers = new Map();
         
         function initMultiplayer() {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 try {
-                    // Создаем Peer с уникальным ID для комнаты
-                    // Все игроки подключаются к одной комнате "parkour_maze"
-                    peer = new Peer('parkour_maze_' + Math.random().toString(36).substring(2, 7), {
+                    peer = new Peer({
                         host: 'peerjs-server.herokuapp.com',
                         port: 443,
-                        secure: true,
-                        debug: 2
+                        secure: true
                     });
                     
-                    peer.on('open', (id) => {
-                        myPlayerId = id;
-                        console.log('Мой ID:', id);
-                        document.getElementById('server-status').textContent = '🟢 НА СЕРВЕРЕ';
-                        document.getElementById('server-status').style.color = '#4CAF50';
-                        
-                        // Слушаем входящие подключения
-                        peer.on('connection', (conn) => {
-                            handleNewConnection(conn);
-                        });
-                        
-                        // Автоматически подключаемся к хосту
-                        // В реальном проекте здесь должен быть сигнальный сервер
-                        // Но для демо используем broadcast
-                        setTimeout(() => {
-                            // Пытаемся найти других игроков
-                            broadcastPresence();
-                        }, 1000);
-                        
+                    peer.on('open', () => {
+                        console.log('Мультиплеер готов');
                         resolve();
                     });
                     
-                    peer.on('error', (err) => {
-                        console.error('Peer error:', err);
-                        document.getElementById('server-status').textContent = '🔴 ОШИБКА СЕРВЕРА';
-                        document.getElementById('server-status').style.color = '#ff5555';
-                        reject(err);
+                    peer.on('error', () => {
+                        console.log('Мультиплеер отключен');
+                        resolve(); // Все равно резолвим, чтобы игра продолжалась
                     });
-                    
                 } catch (e) {
-                    console.error('Multiplayer init error:', e);
-                    reject(e);
+                    console.log('Мультиплеер не доступен');
+                    resolve();
                 }
             });
-        }
-        
-        function handleNewConnection(conn) {
-            connections.set(conn.peer, conn);
-            
-            conn.on('open', () => {
-                console.log('Подключен игрок:', conn.peer);
-                updatePlayersCount();
-                
-                // Отправляем свою позицию новому игроку
-                sendPosition(conn);
-                
-                conn.on('data', (data) => {
-                    handlePlayerData(conn.peer, data);
-                });
-                
-                conn.on('close', () => {
-                    connections.delete(conn.peer);
-                    removeOtherPlayer(conn.peer);
-                    updatePlayersCount();
-                });
-            });
-        }
-        
-        function broadcastPresence() {
-            // В реальном проекте здесь должен быть сигнальный сервер
-            // Для демо просто ждем входящие подключения
-            console.log('Ожидание других игроков...');
-        }
-        
-        function sendPosition(conn) {
-            if (!conn || !conn.open) return;
-            
-            conn.send({
-                type: 'position',
-                username: currentUser ? currentUser.username : 'Игрок',
-                x: localPlayerBody ? localPlayerBody.position.x : 0,
-                y: localPlayerBody ? localPlayerBody.position.y : 5,
-                z: localPlayerBody ? localPlayerBody.position.z : 10,
-                headColor: playerColors.head,
-                bodyColor: playerColors.body,
-                legsColor: playerColors.legs,
-                armsColor: playerColors.arms
-            });
-        }
-        
-        function broadcastPosition() {
-            if (!localPlayerBody) return;
-            
-            const data = {
-                type: 'position',
-                username: currentUser ? currentUser.username : 'Игрок',
-                x: localPlayerBody.position.x,
-                y: localPlayerBody.position.y,
-                z: localPlayerBody.position.z,
-                headColor: playerColors.head,
-                bodyColor: playerColors.body,
-                legsColor: playerColors.legs,
-                armsColor: playerColors.arms
-            };
-            
-            connections.forEach((conn) => {
-                if (conn.open) {
-                    conn.send(data);
-                }
-            });
-        }
-        
-        function handlePlayerData(id, data) {
-            if (data.type === 'position') {
-                if (!otherPlayers.has(id)) {
-                    // Создаем нового игрока
-                    const model = createMultiplayerModel({
-                        head: data.headColor || '#ffccaa',
-                        body: data.bodyColor || '#3366ff',
-                        legs: data.legsColor || '#2244aa',
-                        arms: data.armsColor || '#2244aa'
-                    });
-                    model.position.set(data.x, data.y, data.z);
-                    scene.add(model);
-                    
-                    otherPlayers.set(id, {
-                        model: model,
-                        targetPos: new THREE.Vector3(data.x, data.y, data.z),
-                        username: data.username || 'Игрок'
-                    });
-                    
-                    updatePlayersCount();
-                } else {
-                    // Обновляем позицию существующего игрока
-                    const player = otherPlayers.get(id);
-                    player.targetPos.set(data.x, data.y, data.z);
-                }
-            }
-        }
-        
-        function removeOtherPlayer(id) {
-            if (otherPlayers.has(id)) {
-                const player = otherPlayers.get(id);
-                scene.remove(player.model);
-                otherPlayers.delete(id);
-                updatePlayersCount();
-            }
-        }
-        
-        function updatePlayersCount() {
-            const count = otherPlayers.size + 1; // +1 за себя
-            document.getElementById('players-count').textContent = `👥 ${count}/10`;
-        }
-        
-        function createMultiplayerModel(colors) {
-            const group = new THREE.Group();
-            
-            function getMaterial(hexColor) {
-                return new THREE.MeshStandardMaterial({ color: hexColor });
-            }
-            
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), getMaterial(colors.body));
-            torso.position.y = 1.6;
-            torso.castShadow = true;
-            group.add(torso);
-            
-            const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), getMaterial(colors.head));
-            head.position.y = 3;
-            head.castShadow = true;
-            group.add(head);
-            
-            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), getMaterial(colors.legs));
-            leftLeg.position.set(-0.4, 0.2, 0);
-            leftLeg.castShadow = true;
-            group.add(leftLeg);
-            
-            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), getMaterial(colors.legs));
-            rightLeg.position.set(0.4, 0.2, 0);
-            rightLeg.castShadow = true;
-            group.add(rightLeg);
-            
-            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), getMaterial(colors.arms));
-            leftArm.position.set(-0.8, 1.8, 0);
-            leftArm.castShadow = true;
-            group.add(leftArm);
-            
-            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), getMaterial(colors.arms));
-            rightArm.position.set(0.8, 1.8, 0);
-            rightArm.castShadow = true;
-            group.add(rightArm);
-            
-            return group;
         }
         
         // ==================== УПРАВЛЕНИЕ ИГРОЙ ====================
@@ -1660,6 +1465,7 @@
         let joystickActive = false;
         let joystickVector = { x: 0, y: 0 };
         let jumpButtonPressed = false;
+        let jumpButtonWasPressed = false; // Для отслеживания однократного нажатия
         let cameraTouchActive = false;
         let lastTouchX = 0, lastTouchY = 0;
         
@@ -1673,11 +1479,7 @@
             }
             
             // Инициализируем мультиплеер
-            try {
-                await initMultiplayer();
-            } catch (e) {
-                console.error('Failed to init multiplayer:', e);
-            }
+            await initMultiplayer();
             
             initThreeJSGame(document.getElementById('game-canvas'));
             initMobileControls();
@@ -1722,10 +1524,7 @@
             leftArea.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 joystickActive = true;
-                
-                // Получаем позицию касания относительно джойстика
-                const touch = e.touches[0];
-                updateJoystick(touch);
+                updateJoystick(e.touches[0]);
             });
             
             leftArea.addEventListener('touchmove', (e) => {
@@ -1736,13 +1535,6 @@
             });
             
             leftArea.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                joystickActive = false;
-                joystickVector = { x: 0, y: 0 };
-                handle.style.transform = 'translate(0px, 0px)';
-            });
-            
-            leftArea.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
                 joystickActive = false;
                 joystickVector = { x: 0, y: 0 };
@@ -1771,47 +1563,22 @@
                 joystickVector.y = dy / maxDistance;
             }
             
-            // Правая область - камера + кнопка прыжка
+            // Правая область - камера
             rightArea.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                
-                // Проверяем, не нажали ли на кнопку прыжка
-                const jumpBtnRect = jumpBtn.getBoundingClientRect();
-                const touch = e.touches[0];
-                
-                if (touch.clientX >= jumpBtnRect.left && 
-                    touch.clientX <= jumpBtnRect.right && 
-                    touch.clientY >= jumpBtnRect.top && 
-                    touch.clientY <= jumpBtnRect.bottom) {
-                    // Нажатие на кнопку прыжка
-                    jumpButtonPressed = true;
-                    jumpBtn.classList.add('active');
-                    
-                    // Сбрасываем через небольшую задержку, чтобы удержание не вызывало многократные прыжки
-                    setTimeout(() => {
-                        if (!jumpButtonPressed) return;
-                        // Не сбрасываем сразу, чтобы игрок мог удерживать кнопку
-                    }, 100);
-                } else {
-                    // Начало поворота камеры
-                    cameraTouchActive = true;
-                    lastTouchX = touch.clientX;
-                    lastTouchY = touch.clientY;
-                }
+                cameraTouchActive = true;
+                lastTouchX = e.touches[0].clientX;
+                lastTouchY = e.touches[0].clientY;
             });
             
             rightArea.addEventListener('touchmove', (e) => {
                 e.preventDefault();
-                const touch = e.touches[0];
-                
-                if (cameraTouchActive) {
-                    // Поворот камеры
+                if (cameraTouchActive && yawObject) {
+                    const touch = e.touches[0];
                     const deltaX = touch.clientX - lastTouchX;
                     const deltaY = touch.clientY - lastTouchY;
                     
-                    if (yawObject) {
-                        yawObject.rotation.y -= deltaX * 0.005;
-                    }
+                    yawObject.rotation.y -= deltaX * 0.005;
                     if (pitchObject) {
                         pitchObject.rotation.x -= deltaY * 0.003;
                         pitchObject.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitchObject.rotation.x));
@@ -1824,39 +1591,10 @@
             
             rightArea.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                
-                // Проверяем, отпустили ли кнопку прыжка
-                const jumpBtnRect = jumpBtn.getBoundingClientRect();
-                
-                // Проверяем все касания
-                let jumpButtonReleased = true;
-                for (let i = 0; i < e.touches.length; i++) {
-                    const touch = e.touches[i];
-                    if (touch.clientX >= jumpBtnRect.left && 
-                        touch.clientX <= jumpBtnRect.right && 
-                        touch.clientY >= jumpBtnRect.top && 
-                        touch.clientY <= jumpBtnRect.bottom) {
-                        jumpButtonReleased = false;
-                        break;
-                    }
-                }
-                
-                if (jumpButtonReleased) {
-                    jumpButtonPressed = false;
-                    jumpBtn.classList.remove('active');
-                }
-                
                 cameraTouchActive = false;
             });
             
-            rightArea.addEventListener('touchcancel', (e) => {
-                e.preventDefault();
-                cameraTouchActive = false;
-                jumpButtonPressed = false;
-                jumpBtn.classList.remove('active');
-            });
-            
-            // Отдельно обрабатываем касания кнопки прыжка для надежности
+            // Кнопка прыжка
             jumpBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1865,13 +1603,6 @@
             });
             
             jumpBtn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                jumpButtonPressed = false;
-                jumpBtn.classList.remove('active');
-            });
-            
-            jumpBtn.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 jumpButtonPressed = false;
@@ -2165,11 +1896,13 @@
             
             // Функция проверки на земле
             function isOnGround() {
+                // Проверяем, стоит ли игрок на платформе (скорость по Y почти 0)
                 return Math.abs(localPlayerBody.velocity.y) < 0.1;
             }
             
             // Анимация
             walkTime = 0;
+            let canDoubleJump = true; // Запрещаем двойные прыжки
             
             function animate() {
                 window.gameAnimation = requestAnimationFrame(animate);
@@ -2221,7 +1954,7 @@
                 // Джойстик (мобильное управление)
                 if (joystickActive) {
                     moveX += joystickVector.x;
-                    moveZ += -joystickVector.y; // Инвертируем Y для правильного направления
+                    moveZ += -joystickVector.y;
                 }
                 
                 if (moveX !== 0 || moveZ !== 0) {
@@ -2244,34 +1977,35 @@
                 localPlayerBody.velocity.x = (forward.x * moveZ + right.x * moveX) * moveSpeed;
                 localPlayerBody.velocity.z = (forward.z * moveZ + right.z * moveX) * moveSpeed;
                 
-                // Прыжок (клавиатура + кнопка на телефоне)
+                // ========== ПРЫЖОК ТОЛЬКО НА ЗЕМЛЕ ==========
                 const onGround = isOnGround();
                 
                 if (onGround) {
                     groundIndicator.textContent = '🟢 НА ЗЕМЛЕ';
                     groundIndicator.classList.add('onground');
                     groundIndicator.classList.remove('air');
+                    canDoubleJump = true; // Сбрасываем возможность прыжка
                 } else {
                     groundIndicator.textContent = '🔴 В ВОЗДУХЕ';
                     groundIndicator.classList.add('air');
                     groundIndicator.classList.remove('onground');
                 }
                 
-                // Проверяем прыжок с клавиатуры
+                // Прыжок с клавиатуры
                 if (jumpPressed && onGround) {
                     localPlayerBody.velocity.y = 10;
                     jumpPressed = false;
                 }
                 
-                // Проверяем прыжок с кнопки на телефоне (только при нажатии, не при удержании)
+                // Прыжок с кнопки на телефоне (только на земле)
                 if (jumpButtonPressed && onGround) {
                     localPlayerBody.velocity.y = 10;
-                    // Не сбрасываем jumpButtonPressed сразу, чтобы игрок мог удерживать кнопку,
-                    // но прыжок сработает только один раз благодаря проверке onGround
-                    // При удержании кнопки в воздухе прыжок не сработает
+                    // Сбрасываем флаг, чтобы прыжок сработал только один раз
+                    jumpButtonPressed = false;
+                    document.getElementById('jump-button').classList.remove('active');
                 }
                 
-                // Отправляем позицию другим игрокам
+                // Отправляем позицию другим игрокам (если есть мультиплеер)
                 if (connections.size > 0) {
                     broadcastPosition();
                 }
@@ -2279,7 +2013,6 @@
                 // Обновляем позиции других игроков
                 otherPlayers.forEach((player) => {
                     if (player.model && player.targetPos) {
-                        // Плавная интерполяция
                         player.model.position.lerp(player.targetPos, 0.3);
                     }
                 });
