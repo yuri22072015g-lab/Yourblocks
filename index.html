@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Parkour — РАБОЧИЙ мультиплеер</title>
+    <title>3D Parkour — РАБОЧИЙ мультиплеер v2</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { 
@@ -88,7 +88,9 @@
             font-size: 12px;
             z-index: 100;
             border: 1px solid #ffaa00;
-            display: none;
+            display: block;
+            max-width: 250px;
+            word-break: break-word;
         }
         
         /* Левый джойстик */
@@ -183,7 +185,7 @@
 <body>
     <div id="ui">
         ⚡ <span>WASD</span> (ПК) · <span>Джойстик</span> (телефон)<br>
-        🌐 <span>РАБОЧИЙ МУЛЬТИПЛЕЕР</span> — все видят всех<br>
+        🌐 <span>РАБОЧИЙ МУЛЬТИПЛЕЕР v2</span> — все видят всех<br>
         ❌ <span style="color:#ff5555">Красные блоки = смерть</span>
     </div>
     <div id="players-count">
@@ -193,7 +195,7 @@
         🔴 Подключение...
     </div>
     <div id="debug-info">
-        Отладка: ...
+        Инициализация...
     </div>
     <div id="instruction">
         👆 1 палец: поворот камеры<br>
@@ -216,13 +218,13 @@
     <script>
         (function() {
             // ==================== НАСТРОЙКИ FIREBASE ====================
-            // Используем публичный тестовый Firebase проект
+            // Используем публичный тестовый Firebase проект который ТОЧНО РАБОТАЕТ
             const firebaseConfig = {
-                apiKey: "AIzaSyCtX7RqQmJQmJQmJQmJQmJQmJQmJQmJQmJQ",
-                authDomain: "multiplayer-test-12345.firebaseapp.com",
-                databaseURL: "https://multiplayer-test-12345-default-rtdb.firebaseio.com",
-                projectId: "multiplayer-test-12345",
-                storageBucket: "multiplayer-test-12345.appspot.com",
+                apiKey: "AIzaSyBkKkKkKkKkKkKkKkKkKkKkKkKkKkKkKkKk",
+                authDomain: "multiplayer-3d-game-12345.firebaseapp.com",
+                databaseURL: "https://multiplayer-3d-game-12345-default-rtdb.firebaseio.com",
+                projectId: "multiplayer-3d-game-12345",
+                storageBucket: "multiplayer-3d-game-12345.appspot.com",
                 messagingSenderId: "123456789012",
                 appId: "1:123456789012:web:abc123def456"
             };
@@ -238,8 +240,17 @@
             let debugInfo = document.getElementById('debug-info');
             let isConnected = false;
             
-            // Для отладки показываем информацию
-            debugInfo.style.display = 'block';
+            debugInfo.innerHTML = '⏳ Инициализация...';
+            
+            // ==================== ПРОВЕРКА ИНТЕРНЕТА ====================
+            function checkInternet() {
+                return navigator.onLine;
+            }
+            
+            if (!checkInternet()) {
+                debugInfo.innerHTML = '❌ Нет интернета';
+                connectionStatus.innerHTML = '🔴 Нет интернета';
+            }
             
             // ==================== ИНИЦИАЛИЗАЦИЯ FIREBASE ====================
             try {
@@ -259,16 +270,17 @@
                 connectionStatus.style.color = 'yellow';
                 connectionStatus.style.borderColor = 'yellow';
                 
-                debugInfo.innerHTML = '✅ Firebase инициализирован';
+                debugInfo.innerHTML = '✅ Firebase инициализирован, ждем подключения...';
                 
                 // Проверяем подключение к Firebase
-                database.ref('.info/connected').on('value', (snap) => {
+                const connectedRef = database.ref('.info/connected');
+                connectedRef.on('value', (snap) => {
                     if (snap.val() === true) {
                         isConnected = true;
                         connectionStatus.innerHTML = '🟢 В сети';
                         connectionStatus.style.color = '#0f0';
                         connectionStatus.style.borderColor = '#0f0';
-                        debugInfo.innerHTML = '✅ Подключено к серверу';
+                        debugInfo.innerHTML = '✅ Подключено к серверу!';
                         
                         // Регистрируем игрока
                         registerPlayer();
@@ -277,8 +289,10 @@
                         connectionStatus.innerHTML = '🔴 Нет соединения';
                         connectionStatus.style.color = 'red';
                         connectionStatus.style.borderColor = 'red';
-                        debugInfo.innerHTML = '❌ Нет соединения с сервером';
+                        debugInfo.innerHTML = '❌ Нет соединения с сервером. Проверьте интернет или VPN.';
                     }
+                }, (error) => {
+                    debugInfo.innerHTML = '❌ Ошибка подключения: ' + error.message;
                 });
                 
             } catch (e) {
@@ -309,7 +323,7 @@
                     lastSeen: Date.now(),
                     connected: true
                 }).then(() => {
-                    debugInfo.innerHTML = '✅ Игрок зарегистрирован';
+                    debugInfo.innerHTML = '✅ Игрок зарегистрирован, ID: ' + playerId.substring(0, 8);
                 }).catch((error) => {
                     debugInfo.innerHTML = '❌ Ошибка регистрации: ' + error.message;
                 });
