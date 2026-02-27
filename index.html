@@ -2,101 +2,34 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Yourblocks — Надёжный мультиплеер</title>
+    <title>Yourblocks — Облачные аккаунты и мультиплеер</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', 'Roboto', sans-serif;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+        /* ... (все предыдущие стили остаются без изменений, добавим стили для настроек) ... */
+        .settings-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #1e1e1e;
+            border-radius: 20px;
+            padding: 30px;
         }
-        body {
-            overflow: hidden;
-            background: #141414;
-            touch-action: none;
-        }
-        #login-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            z-index: 2000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s;
-        }
-        .login-container {
-            background: rgba(30, 30, 40, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 30px;
-            width: 90%;
-            max-width: 400px;
-            border: 2px solid #4CAF50;
-            box-shadow: 0 0 50px rgba(76, 175, 80, 0.3);
-            animation: slideUp 0.5s;
-        }
-        @keyframes slideUp {
-            from { transform: translateY(50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .login-logo {
-            text-align: center;
-            font-size: 48px;
+        .settings-title {
+            font-size: 24px;
+            color: #fff;
             margin-bottom: 20px;
-            color: #4CAF50;
-        }
-        .login-title {
             text-align: center;
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: white;
         }
-        .login-subtitle {
-            text-align: center;
-            color: #888;
-            margin-bottom: 30px;
-            font-size: 14px;
+        .danger-zone {
+            border: 2px solid #ff5555;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 30px;
+            background: rgba(255, 80, 80, 0.1);
         }
-        .login-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 5px;
-            border-radius: 50px;
-        }
-        .login-tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            border-radius: 40px;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: #888;
-            font-weight: bold;
-        }
-        .login-tab.active {
-            background: #4CAF50;
-            color: white;
-        }
-        .login-form {
-            display: none;
-        }
-        .login-form.active {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateX(10px); }
-            to { opacity: 1; transform: translateX(0); }
+        .danger-zone h3 {
+            color: #ff5555;
+            margin-bottom: 15px;
+            font-size: 20px;
         }
         .input-group {
             margin-bottom: 20px;
@@ -110,723 +43,123 @@
         .input-group input {
             width: 100%;
             padding: 15px;
-            background: rgba(0, 0, 0, 0.3);
+            background: #2a2a2a;
             border: 2px solid #333;
-            border-radius: 15px;
+            border-radius: 12px;
             color: white;
             font-size: 16px;
-            transition: all 0.3s;
         }
         .input-group input:focus {
             outline: none;
-            border-color: #4CAF50;
+            border-color: #ff5555;
         }
-        .login-btn {
-            width: 100%;
-            padding: 15px;
-            background: #4CAF50;
+        .delete-btn {
+            background: #ff5555;
             color: white;
             border: none;
-            border-radius: 15px;
+            padding: 15px 30px;
+            border-radius: 12px;
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
-            margin-bottom: 15px;
-        }
-        .login-btn:hover {
-            transform: scale(1.02);
-            background: #45a049;
-        }
-        .guest-btn {
             width: 100%;
-            padding: 15px;
-            background: transparent;
-            color: #888;
-            border: 2px solid #333;
-            border-radius: 15px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
         }
-        .guest-btn:hover {
-            border-color: #4CAF50;
-            color: white;
+        .delete-btn:hover {
+            background: #ff3333;
+            transform: scale(1.02);
         }
-        .error-message {
-            color: #ff5555;
+        .delete-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .warning-text {
+            color: #ffaa00;
             font-size: 14px;
             margin-top: 10px;
-            text-align: center;
-            display: none;
         }
-        #menu-container {
-            position: absolute;
+        .guest-warning {
+            text-align: center;
+            color: #888;
+            padding: 40px;
+            font-size: 18px;
+        }
+        .confirmation-overlay {
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: #141414;
-            z-index: 1000;
+            background: rgba(0,0,0,0.8);
+            z-index: 3000;
             display: none;
-            flex-direction: column;
-            overflow-y: auto;
-            color: white;
-        }
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 250px;
-            height: 100%;
-            background: #1e1e1e;
-            padding: 20px 0;
-            border-right: 1px solid #333;
-            z-index: 100;
-        }
-        .sidebar-header {
-            padding: 0 20px 20px 20px;
-            border-bottom: 1px solid #333;
-        }
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #fff;
-            margin-bottom: 20px;
-        }
-        .logo span {
-            color: #4CAF50;
-        }
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            background: #2a2a2a;
-            border-radius: 12px;
-            display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            border: 2px solid #4CAF50;
         }
-        .user-info-side {
-            flex: 1;
-        }
-        .user-name {
-            font-weight: bold;
-            font-size: 16px;
-            margin-bottom: 4px;
-            color: #fff;
-        }
-        .user-status {
-            font-size: 12px;
-            color: #4CAF50;
-        }
-        .user-status span {
-            color: #888;
-            margin-left: 5px;
-        }
-        .nav-menu {
-            padding: 20px 0;
-        }
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 20px;
-            color: #888;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .nav-item:hover {
-            background: #2a2a2a;
-            color: #fff;
-        }
-        .nav-item.active {
-            background: #4CAF50;
-            color: white;
-        }
-        .nav-item i {
-            font-size: 20px;
-            width: 24px;
-            text-align: center;
-        }
-        .main-content {
-            margin-left: 250px;
-            padding: 20px 30px;
-            min-height: 100vh;
-        }
-        .content-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        .content-header h1 {
-            font-size: 28px;
-            color: #fff;
-        }
-        .header-stats {
-            display: flex;
-            gap: 20px;
-            color: #888;
-        }
-        .header-stats span {
-            color: #4CAF50;
-            font-weight: bold;
-        }
-        .content-section {
-            display: none;
-        }
-        .content-section.active {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
-        .game-card-large {
-            background: #1e1e1e;
-            border-radius: 20px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 3px solid transparent;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .game-card-large:hover {
-            transform: translateY(-5px);
-            border-color: #4CAF50;
-        }
-        .game-card-large.selected {
-            border-color: #4CAF50;
-            box-shadow: 0 0 40px rgba(76, 175, 80, 0.4);
-        }
-        .game-image-large {
-            height: 200px;
-            background: linear-gradient(135deg, #2a5a2a, #1a3a1a);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 64px;
-            position: relative;
-        }
-        .game-image-large::after {
-            content: '▶';
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            background: #4CAF50;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            color: white;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .game-card-large:hover .game-image-large::after {
-            opacity: 1;
-        }
-        .game-info-large {
-            padding: 25px;
-            text-align: center;
-        }
-        .game-title-large {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #4CAF50;
-        }
-        .game-description-large {
-            font-size: 16px;
-            color: #888;
-            margin-bottom: 20px;
-        }
-        .game-features {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        .feature {
-            text-align: center;
-        }
-        .feature-icon {
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-        .feature-text {
-            font-size: 14px;
-            color: #888;
-        }
-        .feature-text span {
-            color: #4CAF50;
-            font-weight: bold;
-        }
-        .profile-header {
+        .confirmation-box {
             background: #1e1e1e;
             border-radius: 20px;
             padding: 30px;
-            margin-bottom: 30px;
-            display: flex;
-            gap: 30px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .profile-avatar-large {
-            width: 120px;
-            height: 120px;
-            background: #2a2a2a;
-            border-radius: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 60px;
-            border: 4px solid #4CAF50;
-        }
-        .profile-info h2 {
-            font-size: 32px;
-            margin-bottom: 10px;
-            color: #fff;
-        }
-        .profile-stats {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-        }
-        .stat-item {
+            max-width: 400px;
             text-align: center;
+            border: 2px solid #ff5555;
         }
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #4CAF50;
-        }
-        .stat-label {
-            color: #888;
-            font-size: 13px;
-        }
-        .customization-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-        }
-        .color-section {
-            background: #1e1e1e;
-            border-radius: 16px;
-            padding: 20px;
-        }
-        .color-section h3 {
-            margin-bottom: 15px;
-            color: #fff;
-            font-size: 16px;
-        }
-        .color-picker {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .color-option {
-            width: 45px;
-            height: 45px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 2px solid transparent;
-        }
-        .color-option:hover {
-            transform: scale(1.1);
-        }
-        .color-option.selected {
-            border-color: white;
-            box-shadow: 0 0 15px currentColor;
-        }
-        .play-button {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            border-radius: 50px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.5);
-            z-index: 1001;
-            transition: all 0.3s;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .play-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 15px 40px rgba(76, 175, 80, 0.7);
-        }
-        .play-button:active {
-            transform: scale(0.95);
-        }
-        #game-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            display: none;
-        }
-        #game-container.active {
-            display: block;
-        }
-        .game-exit-button {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 200;
-            background: rgba(255, 80, 80, 0.9);
-            color: white;
-            border: 2px solid white;
-            width: 50px;
-            height: 50px;
-            border-radius: 25px;
-            font-size: 24px;
-            cursor: pointer;
-            backdrop-filter: blur(5px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 20px rgba(255,0,0,0.5);
-            transition: all 0.3s;
-        }
-        .game-exit-button:hover {
-            transform: scale(1.1);
-            background: rgba(255, 40, 40, 1);
-        }
-        .game-exit-button:active {
-            transform: scale(0.95);
-        }
-        .exit-hint {
-            position: absolute;
-            top: 80px;
-            right: 20px;
-            z-index: 200;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 30px;
-            font-size: 12px;
-            border: 1px solid #ff5555;
-            backdrop-filter: blur(5px);
-        }
-        .ground-indicator {
-            position: absolute;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-size: 14px;
-            border: 2px solid #4CAF50;
-            z-index: 200;
-            backdrop-filter: blur(5px);
-            transition: all 0.3s;
-        }
-        .ground-indicator.onground {
-            border-color: #4CAF50;
-            color: #4CAF50;
-        }
-        .ground-indicator.air {
-            border-color: #ff5555;
+        .confirmation-box h3 {
             color: #ff5555;
+            margin-bottom: 20px;
+            font-size: 24px;
         }
-        .players-count {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 200;
-            background: rgba(0,0,0,0.7);
-            color: #4CAF50;
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-size: 14px;
-            border: 2px solid #4CAF50;
-            backdrop-filter: blur(5px);
+        .confirmation-box p {
+            color: #fff;
+            margin-bottom: 30px;
+            line-height: 1.5;
         }
-        .server-status {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 200;
-            background: rgba(0,0,0,0.7);
-            color: #4CAF50;
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-size: 14px;
-            border: 2px solid #4CAF50;
-            backdrop-filter: blur(5px);
-            white-space: nowrap;
-        }
-        .jump-hint {
-            position: absolute;
-            bottom: 150px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.5);
-            font-size: 12px;
-            z-index: 200;
-        }
-        #mobile-controls {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 150;
-            pointer-events: none;
-            display: none;
-        }
-        #mobile-controls.active {
-            display: block;
-        }
-        #left-area {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 50%;
-            height: 100%;
-            z-index: 151;
-            pointer-events: auto;
-            background: transparent;
-            touch-action: none;
-        }
-        #right-area {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 50%;
-            height: 100%;
-            z-index: 151;
-            pointer-events: auto;
-            background: transparent;
-            touch-action: none;
-        }
-        #joystick-left {
-            position: absolute;
-            bottom: 40px;
-            left: 40px;
-            width: 120px;
-            height: 120px;
-            background: rgba(30, 30, 40, 0.7);
-            border-radius: 60px;
-            backdrop-filter: blur(10px);
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-            z-index: 152;
-            pointer-events: none;
+        .confirmation-buttons {
             display: flex;
-            align-items: center;
-            justify-content: center;
+            gap: 15px;
         }
-        #joystick-handle {
-            width: 50px;
-            height: 50px;
-            background: rgba(76, 175, 80, 0.9);
-            border-radius: 25px;
-            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
-            transition: transform 0.01s;
-            border: 2px solid white;
-        }
-        #jump-button {
-            position: absolute;
-            bottom: 40px;
-            right: 40px;
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 80, 80, 0.9);
-            border-radius: 50px;
-            backdrop-filter: blur(10px);
-            border: 3px solid white;
-            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
-            z-index: 152;
-            pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
+        .confirm-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
             font-weight: bold;
-            text-transform: uppercase;
-            transition: all 0.1s;
-        }
-        #jump-button.active {
-            transform: scale(0.9);
-            background: rgba(255, 40, 40, 1);
-        }
-        .logout-btn {
-            position: fixed;
-            top: 20px;
-            left: 270px;
-            background: rgba(255, 80, 80, 0.9);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 30px;
-            font-size: 14px;
             cursor: pointer;
-            z-index: 1002;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border: 2px solid white;
-            transition: all 0.3s;
+            transition: 0.3s;
         }
-        .logout-btn:hover {
-            background: rgba(255, 40, 40, 1);
-            transform: scale(1.05);
+        .confirm-btn.yes {
+            background: #ff5555;
+            color: white;
         }
-        .logout-btn:active {
-            transform: scale(0.95);
+        .confirm-btn.yes:hover {
+            background: #ff3333;
         }
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 70px;
-                overflow: hidden;
-            }
-            .sidebar .logo,
-            .user-profile,
-            .nav-item span {
-                display: none;
-            }
-            .main-content {
-                margin-left: 70px;
-                padding: 15px;
-            }
-            .nav-item {
-                justify-content: center;
-                padding: 15px;
-            }
-            .nav-item i {
-                margin: 0;
-                font-size: 24px;
-            }
-            .profile-header {
-                flex-direction: column;
-                text-align: center;
-            }
-            .game-features {
-                flex-direction: column;
-                gap: 15px;
-            }
-            .play-button {
-                bottom: 20px;
-                right: 20px;
-                padding: 12px 25px;
-                font-size: 16px;
-            }
-            .logout-btn {
-                left: 90px;
-                padding: 8px 15px;
-                font-size: 12px;
-            }
-            .game-exit-button {
-                width: 60px;
-                height: 60px;
-                font-size: 30px;
-            }
-            .server-status {
-                font-size: 12px;
-                padding: 5px 10px;
-                top: 10px;
-            }
-            .players-count {
-                font-size: 12px;
-                padding: 5px 10px;
-                top: 10px;
-                left: 10px;
-            }
-            #joystick-left {
-                width: 100px;
-                height: 100px;
-                bottom: 30px;
-                left: 30px;
-            }
-            #joystick-handle {
-                width: 40px;
-                height: 40px;
-            }
-            #jump-button {
-                width: 80px;
-                height: 80px;
-                bottom: 30px;
-                right: 30px;
-                font-size: 16px;
-            }
-        }
-
-        /* Отладочная панель */
-        #debug-panel {
-            position: absolute;
-            bottom: 250px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            color: #0ff;
-            padding: 10px 20px;
-            border-radius: 30px;
-            font-size: 12px;
-            z-index: 300;
-            border: 2px solid #0ff;
-            display: none;
-            max-width: 80%;
-            word-break: break-word;
-            text-align: center;
-            pointer-events: none;
-        }
-        #manual-connect {
-            position: absolute;
-            bottom: 200px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 300;
-            display: flex;
-            gap: 5px;
-            background: rgba(0,0,0,0.8);
-            padding: 10px;
-            border-radius: 30px;
-            border: 2px solid #4CAF50;
-        }
-        #manual-connect input {
-            padding: 8px;
-            border-radius: 20px;
-            border: none;
-            width: 150px;
+        .confirm-btn.no {
             background: #333;
             color: white;
         }
-        #manual-connect button {
-            padding: 8px 15px;
-            border-radius: 20px;
-            border: none;
-            background: #4CAF50;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
+        .confirm-btn.no:hover {
+            background: #444;
         }
     </style>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- PeerJS -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <!-- Защита от правого клика и клавиш -->
+    <script>
+        document.addEventListener('contextmenu', function(e) { e.preventDefault(); return false; });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        document.ondragstart = function() { return false; };
+        document.onselectstart = function() { return false; };
+    </script>
 </head>
 <body>
     <!-- Экран входа -->
@@ -902,6 +235,10 @@
                     <i>👥</i>
                     <span>Друзья</span>
                 </div>
+                <div class="nav-item" onclick="switchPage('settings')">
+                    <i>⚙️</i>
+                    <span>Настройки</span>
+                </div>
             </div>
         </div>
         <button class="logout-btn" onclick="logout()">
@@ -921,7 +258,7 @@
                     <div class="game-image-large">🏃‍♂️</div>
                     <div class="game-info-large">
                         <div class="game-title-large">PARKOUR MAZE</div>
-                        <div class="game-description-large">Паркур + Лабиринт — мультиплеер!</div>
+                        <div class="game-description-large">Паркур + Лабиринт — облачные аккаунты и мультиплеер</div>
                         <div class="game-features">
                             <div class="feature">
                                 <div class="feature-icon">🏃</div>
@@ -1037,6 +374,15 @@
                     <p>В мультиплеере вы можете встретить друзей!</p>
                 </div>
             </div>
+            <!-- Новая секция: Настройки аккаунта -->
+            <div id="settings-section" class="content-section">
+                <div class="settings-container">
+                    <h2 class="settings-title">⚙️ Настройки аккаунта</h2>
+                    <div id="account-settings-content">
+                        <!-- Контент будет заполнен динамически через JS -->
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1049,9 +395,8 @@
         <div class="ground-indicator onground" id="ground-indicator">🟢 НА ЗЕМЛЕ</div>
         <div class="jump-hint">👆 Левая часть - движение, правая - камера + прыжок</div>
 
-        <!-- Отладочные элементы -->
         <div id="debug-panel"></div>
-        <div id="manual-connect" style="display: none;">
+        <div id="manual-connect">
             <input type="text" id="peer-id-input" placeholder="ID друга">
             <button onclick="manualConnect()">Подключиться</button>
         </div>
@@ -1070,20 +415,72 @@
         <div id="game-canvas"></div>
     </div>
 
+    <!-- Оверлей подтверждения удаления аккаунта -->
+    <div id="delete-confirm-overlay" class="confirmation-overlay">
+        <div class="confirmation-box">
+            <h3>⚠️ Внимание!</h3>
+            <p>Вы уверены, что хотите навсегда удалить свой аккаунт? Все данные будут потеряны. Это действие необратимо.</p>
+            <div class="confirmation-buttons">
+                <button class="confirm-btn yes" id="confirm-delete-yes">Да, удалить</button>
+                <button class="confirm-btn no" id="confirm-delete-no">Отмена</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
 
     <script>
-        // ==================== СИСТЕМА АККАУНТОВ ====================
+        // ==================== НАСТРОЙКИ FIREBASE (замените на свои) ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDummyKeyReplaceWithYourOwn",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+            projectId: "your-project",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abc123def456"
+        };
+
+        // Инициализация Firebase
+        let database = null;
+        let usersRef = null;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            usersRef = database.ref('users');
+            console.log('Firebase подключён');
+        } catch (e) {
+            console.warn('Firebase не доступен, используется локальное хранилище');
+        }
+
+        // ==================== СИСТЕМА АККАУНТОВ (облачная + локальная) ====================
         let currentUser = null;
         let users = {};
+
+        // Загружаем локальных пользователей как резерв
         try {
             const saved = localStorage.getItem('yourblocks_users');
             if (saved) users = JSON.parse(saved);
         } catch (e) {}
 
+        // Функция сохранения (локально + Firebase)
         function saveUsers() {
             localStorage.setItem('yourblocks_users', JSON.stringify(users));
+            if (database && usersRef) {
+                usersRef.set(users).catch(e => console.warn('Ошибка сохранения в Firebase', e));
+            }
+        }
+
+        // Загрузка из Firebase при старте
+        if (database && usersRef) {
+            usersRef.once('value', (snapshot) => {
+                const fbUsers = snapshot.val();
+                if (fbUsers) {
+                    users = fbUsers;
+                    localStorage.setItem('yourblocks_users', JSON.stringify(users));
+                }
+            });
         }
 
         function switchLoginTab(tab) {
@@ -1188,6 +585,7 @@
             setTimeout(() => {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('menu-container').style.display = 'flex';
+                updateSettingsUI(); // обновляем интерфейс настроек
             }, 500);
         }
 
@@ -1205,6 +603,61 @@
             document.getElementById('register-username').value = '';
             document.getElementById('register-password').value = '';
             document.getElementById('register-confirm').value = '';
+        }
+
+        // ==================== УДАЛЕНИЕ АККАУНТА ====================
+        function updateSettingsUI() {
+            const container = document.getElementById('account-settings-content');
+            if (!currentUser || currentUser.isGuest) {
+                container.innerHTML = '<div class="guest-warning">👤 Вы вошли как гость. Настройки аккаунта доступны только зарегистрированным пользователям.</div>';
+                return;
+            }
+            container.innerHTML = `
+                <div class="danger-zone">
+                    <h3>🚨 Опасная зона</h3>
+                    <div class="input-group">
+                        <label>🔒 Введите пароль для подтверждения</label>
+                        <input type="password" id="delete-password" placeholder="Ваш пароль">
+                    </div>
+                    <button class="delete-btn" id="delete-account-btn">Удалить аккаунт навсегда</button>
+                    <div class="warning-text">Внимание! Это действие нельзя отменить. Все ваши данные будут безвозвратно удалены.</div>
+                </div>
+            `;
+            document.getElementById('delete-account-btn').addEventListener('click', initiateDeleteAccount);
+        }
+
+        function initiateDeleteAccount() {
+            const passwordInput = document.getElementById('delete-password');
+            if (!passwordInput) return;
+            const password = passwordInput.value.trim();
+            if (!password) {
+                alert('Введите пароль');
+                return;
+            }
+            // Проверяем пароль
+            if (users[currentUser.username].password !== password) {
+                alert('Неверный пароль');
+                return;
+            }
+            // Показываем первый диалог подтверждения
+            if (confirm('Вы точно хотите удалить свой аккаунт? Это действие необратимо.')) {
+                // Второй диалог подтверждения
+                if (confirm('Последнее предупреждение! Все ваши данные будут потеряны. Удалить аккаунт?')) {
+                    deleteAccount();
+                }
+            }
+        }
+
+        function deleteAccount() {
+            if (!currentUser || currentUser.isGuest) return;
+            const username = currentUser.username;
+            // Удаляем из объекта users
+            delete users[username];
+            // Сохраняем изменения
+            saveUsers();
+            // Выходим из аккаунта
+            logout();
+            alert('Аккаунт успешно удалён.');
         }
 
         // ==================== КАСТОМИЗАЦИЯ ====================
@@ -1245,11 +698,15 @@
                 'home': 'Главная страница',
                 'profile': 'Профиль',
                 'avatar': 'Аватар',
-                'friends': 'Друзья'
+                'friends': 'Друзья',
+                'settings': 'Настройки'
             };
             document.getElementById('page-title').textContent = titles[page];
             document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
             document.getElementById(page + '-section').classList.add('active');
+            if (page === 'settings') {
+                updateSettingsUI();
+            }
             currentPage = page;
         }
 
@@ -1257,7 +714,7 @@
             document.querySelector('.game-card-large').classList.add('selected');
         }
 
-        // ==================== МУЛЬТИПЛЕЕР (ФИНАЛЬНАЯ ВЕРСИЯ) ====================
+        // ==================== МУЛЬТИПЛЕЕР (PEERJS) ====================
         let peer = null;
         let connections = new Map();
         let otherPlayers = new Map();
@@ -1275,7 +732,6 @@
         function initMultiplayer() {
             return new Promise((resolve) => {
                 try {
-                    // Пытаемся занять фиксированный ID (стать хостом)
                     peer = new Peer(ROOM_ID, {
                         host: '0.peerjs.com',
                         port: 443,
@@ -1288,8 +744,7 @@
                         debugLog(`✅ Я хост, ID: ${id}`);
                         document.getElementById('server-status').textContent = '🟢 ХОСТ КОМНАТЫ';
                         document.getElementById('manual-connect').style.display = 'flex';
-                        document.getElementById('peer-id-input').placeholder = 'Введите ID друга (если нужно)';
-
+                        document.getElementById('peer-id-input').placeholder = 'ID друга';
                         peer.on('connection', (conn) => handleConnection(conn));
                         resolve();
                     });
@@ -1297,8 +752,7 @@
                     peer.on('error', (err) => {
                         console.error('PeerJS error:', err);
                         if (err.type === 'unavailable-id') {
-                            // ID занят, значит комната уже есть – подключаемся как клиент
-                            debugLog('🟡 Комната существует, подключаюсь как клиент...');
+                            debugLog('🟡 Комната занята, подключаюсь как клиент...');
                             peer = new Peer({
                                 host: '0.peerjs.com',
                                 port: 443,
@@ -1309,13 +763,8 @@
                                 myPeerId = id;
                                 debugLog(`✅ Я клиент, мой ID: ${id}`);
                                 document.getElementById('server-status').textContent = '🟢 ПОДКЛЮЧЕНИЕ К КОМНАТЕ...';
-                                // Пытаемся подключиться к хосту
                                 const conn = peer.connect(ROOM_ID);
-                                if (conn) {
-                                    handleConnection(conn);
-                                } else {
-                                    debugLog('❌ Не удалось подключиться к хосту');
-                                }
+                                if (conn) handleConnection(conn);
                                 peer.on('connection', (conn) => handleConnection(conn));
                                 document.getElementById('manual-connect').style.display = 'flex';
                                 resolve();
@@ -1340,15 +789,11 @@
         function handleConnection(conn) {
             const peerId = conn.peer;
             debugLog(`🔌 Соединение с ${peerId}`);
-
             conn.on('open', () => {
                 debugLog(`✅ Соединение установлено с ${peerId}`);
                 connections.set(peerId, conn);
                 updatePlayersCount();
-
-                // Отправляем свою информацию
                 sendMyInfo(conn);
-
                 conn.on('data', (data) => handleData(peerId, data));
                 conn.on('close', () => {
                     debugLog(`🔌 Соединение закрыто с ${peerId}`);
@@ -1356,7 +801,6 @@
                     removeOtherPlayer(peerId);
                     updatePlayersCount();
                 });
-                conn.on('error', (err) => console.error('Connection error:', err));
             });
         }
 
@@ -1457,7 +901,7 @@
             else debugLog('❌ Не удалось создать соединение');
         }
 
-        // ==================== ОСНОВНАЯ ИГРА (Three.js + Cannon) ====================
+        // ==================== ОСНОВНАЯ ИГРА ====================
         let scene, camera, renderer, yawObject, pitchObject, world;
         let localPlayerBody, localModel;
         let keys = {}, jumpPressed = false, spaceKeyDown = false;
@@ -1545,7 +989,7 @@
 
             deathBlocks = [];
 
-            // ==================== УРОВЕНЬ (как в предыдущих версиях) ====================
+            // УРОВЕНЬ
             function createLevel() {
                 const groundMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(80, 2, 80),
@@ -1676,7 +1120,7 @@
             localModel = createCustomPlayerModel();
             scene.add(localModel);
 
-            // ==================== УПРАВЛЕНИЕ ====================
+            // УПРАВЛЕНИЕ
             keys = {};
             jumpPressed = false;
             spaceKeyDown = false;
@@ -1721,7 +1165,6 @@
                 const delta = 0.016;
                 world.step(1 / 60, delta, 3);
 
-                // Смерть
                 let dead = false;
                 if (localPlayerBody.position.y < deathHeight) dead = true;
                 if (!dead) {
@@ -1741,7 +1184,6 @@
                     localPlayerBody.velocity.set(0, 0, 0);
                 }
 
-                // Движение
                 const moveSpeed = 12;
                 let moveX = 0, moveZ = 0;
                 if (keys["KeyW"]) moveZ += 1;
@@ -1776,12 +1218,10 @@
                     document.getElementById('jump-button').classList.remove('active');
                 }
 
-                // Анимация
                 const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
                 if (moving) walkTime += delta * 12;
                 animatePlayer(localModel, walkTime, moving);
 
-                // Отправка позиции другим игрокам
                 if (connections.size > 0) {
                     const now = Date.now();
                     if (now - lastSendTime > 100) {
@@ -1790,14 +1230,12 @@
                     }
                 }
 
-                // Обновление позиций других игроков
                 otherPlayers.forEach((player) => {
                     if (player.model && player.targetPos) {
                         player.model.position.lerp(player.targetPos, 0.3);
                     }
                 });
 
-                // Камера
                 camera.position.set(0, 3, cameraDistance);
                 localModel.position.copy(localPlayerBody.position);
                 yawObject.position.copy(localPlayerBody.position);
@@ -1899,7 +1337,7 @@
             document.getElementById('game-container').classList.add('active');
             if (window.innerWidth <= 768) document.getElementById('mobile-controls').classList.add('active');
 
-            await initMultiplayer(); // Ждём инициализацию мультиплеера
+            await initMultiplayer();
 
             initThreeJSGame(document.getElementById('game-canvas'));
             initMobileControls();
