@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Yourblocks — Список игроков</title>
+    <title>Yourblocks — Паркур + Лабиринт</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         * {
@@ -1212,9 +1212,8 @@
             }
         }
     </style>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- PeerJS для P2P соединения -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script>
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
@@ -1338,7 +1337,7 @@
                     <div class="game-image-large">🏃‍♂️</div>
                     <div class="game-info-large">
                         <div class="game-title-large">PARKOUR MAZE</div>
-                        <div class="game-description-large">Паркур + Лабиринт — играй с друзьями!</div>
+                        <div class="game-description-large">Паркур + Лабиринт — P2P мультиплеер!</div>
                         
                         <div class="game-features">
                             <div class="feature">
@@ -1351,7 +1350,7 @@
                             </div>
                             <div class="feature">
                                 <div class="feature-icon">👥</div>
-                                <div class="feature-text"><span>друзья</span> онлайн</div>
+                                <div class="feature-text"><span>P2P</span> соединение</div>
                             </div>
                             <div class="feature">
                                 <div class="feature-icon">🌍</div>
@@ -1367,7 +1366,7 @@
                 
                 <div id="selected-game-info" style="margin-top: 30px; padding: 20px; background: #1e1e1e; border-radius: 16px;">
                     <div style="display: flex; justify-content: center;">
-                        <button class="play-button" style="position: static;" onclick="startGame()">▶ ВОЙТИ НА СЕРВЕР</button>
+                        <button class="play-button" style="position: static;" onclick="startGame()">▶ ВОЙТИ В ИГРУ</button>
                     </div>
                 </div>
             </div>
@@ -1470,7 +1469,6 @@
                             <button onclick="searchPlayers()">Поиск</button>
                         </div>
                         <div id="search-results" class="search-results">
-                            <!-- Результаты поиска будут здесь -->
                             <div class="no-friends">Введите ник для поиска</div>
                         </div>
                     </div>
@@ -1488,7 +1486,6 @@
                     
                     <!-- Заявки в друзья и друзья -->
                     <div class="friends-lists">
-                        <!-- Входящие заявки -->
                         <div class="friends-column">
                             <h3>📨 Заявки в друзья</h3>
                             <div id="friend-requests" class="friends-list">
@@ -1496,7 +1493,6 @@
                             </div>
                         </div>
                         
-                        <!-- Мои друзья -->
                         <div class="friends-column">
                             <h3>👥 Мои друзья</h3>
                             <div id="my-friends" class="friends-list">
@@ -1513,8 +1509,8 @@
     <div id="game-container">
         <button class="game-exit-button" onclick="exitGame()">✕</button>
         <div class="exit-hint">Нажми ESC или ✕ чтобы выйти</div>
-        <div class="server-status" id="server-status">🌍 ПОДКЛЮЧЕНИЕ...</div>
-        <div class="players-count" id="players-count">👥 1 в мире</div>
+        <div class="server-status" id="server-status">🔵 P2P СОЕДИНЕНИЕ...</div>
+        <div class="players-count" id="players-count">👥 1 в комнате</div>
         <div class="ground-indicator onground" id="ground-indicator">🟢 НА ЗЕМЛЕ</div>
         <div class="jump-hint">👆 Левая часть - движение, правая - камера + прыжок</div>
         
@@ -1536,24 +1532,6 @@
     <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
     
     <script>
-        // ==================== НАСТРОЙКИ FIREBASE ====================
-        const firebaseConfig = {
-            apiKey: "AIzaSyBNL9DMEzJPEQzYV4JN_1l3W1XqWqWqWqU",
-            authDomain: "yourblocks-multiplayer.firebaseapp.com",
-            databaseURL: "https://yourblocks-multiplayer-default-rtdb.firebaseio.com",
-            projectId: "yourblocks-multiplayer",
-            storageBucket: "yourblocks-multiplayer.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abc123def456"
-        };
-        
-        let database = null;
-        let playersRef = null;
-        let usersRef = null;
-        let myPlayerRef = null;
-        let myUserRef = null;
-        let isConnected = false;
-        
         // ==================== СИСТЕМА АККАУНТОВ ====================
         let currentUser = null;
         let users = {};
@@ -1572,7 +1550,6 @@
         function switchLoginTab(tab) {
             document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
-            
             document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
             document.getElementById(tab + '-form').classList.add('active');
         }
@@ -1684,9 +1661,6 @@
             } else {
                 document.getElementById('sidebar-status').innerHTML = currentUser.level + ' <span>Близкий</span>';
                 document.getElementById('profile-friends-count').textContent = currentUser.friends ? Object.keys(currentUser.friends).length : 0;
-                
-                // Синхронизируем с Firebase
-                syncUserWithFirebase();
             }
             
             if (currentUser.colors) {
@@ -1698,6 +1672,7 @@
             setTimeout(() => {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('menu-container').style.display = 'flex';
+                updateAllPlayersList();
             }, 500);
         }
         
@@ -1720,40 +1695,6 @@
             document.getElementById('register-confirm').value = '';
         }
         
-        // ==================== FIREBASE СИНХРОНИЗАЦИЯ ====================
-        function syncUserWithFirebase() {
-            if (!database || currentUser.isGuest) return;
-            
-            myUserRef = database.ref('users/' + currentUser.username);
-            
-            myUserRef.set({
-                username: currentUser.username,
-                level: currentUser.level,
-                colors: playerColors,
-                lastSeen: Date.now(),
-                online: true
-            });
-            
-            myUserRef.onDisconnect().update({
-                online: false,
-                lastSeen: Date.now()
-            });
-            
-            // Слушаем изменения в друзьях
-            myUserRef.child('friendRequests').on('value', (snapshot) => {
-                const requests = snapshot.val() || {};
-                currentUser.friendRequests = requests;
-                updateFriendRequestsUI();
-            });
-            
-            myUserRef.child('friends').on('value', (snapshot) => {
-                const friends = snapshot.val() || {};
-                currentUser.friends = friends;
-                updateFriendsUI();
-                document.getElementById('profile-friends-count').textContent = Object.keys(friends).length;
-            });
-        }
-        
         // ==================== СИСТЕМА ДРУЗЕЙ ====================
         function searchPlayers() {
             const query = document.getElementById('search-input').value.trim().toLowerCase();
@@ -1768,7 +1709,6 @@
             
             const found = [];
             
-            // Ищем во всех пользователях
             for (let username in users) {
                 if (username.toLowerCase().includes(query) && username !== currentUser.username) {
                     found.push(username);
@@ -1861,17 +1801,14 @@
             const targetUser = users[targetUsername];
             if (!targetUser) return;
             
-            // Отправляем заявку
             if (!targetUser.friendRequests) targetUser.friendRequests = {};
             targetUser.friendRequests[currentUser.username] = 'pending';
             
-            // Обновляем статус у текущего пользователя
             if (!currentUser.friends) currentUser.friends = {};
             currentUser.friends[targetUsername] = 'pending';
             
             saveUsers();
             
-            // Обновляем UI
             searchPlayers();
             updateAllPlayersList();
             alert(`Заявка отправлена пользователю ${targetUsername}`);
@@ -1880,7 +1817,6 @@
         function acceptFriendRequest(username) {
             if (currentUser.isGuest) return;
             
-            // Обновляем статус
             if (!currentUser.friends) currentUser.friends = {};
             currentUser.friends[username] = 'accepted';
             
@@ -1943,15 +1879,7 @@
         }
         
         function joinFriend(username) {
-            if (!users[username]?.online) {
-                alert('Друг не в сети');
-                return;
-            }
-            
-            // Сохраняем, что мы хотим присоединиться к другу
-            sessionStorage.setItem('joinFriend', username);
-            
-            // Запускаем игру
+            // В P2P версии просто запускаем игру
             startGame();
         }
         
@@ -2008,18 +1936,15 @@
             }
             
             acceptedFriends.sort().forEach(username => {
-                const isOnline = users[username]?.online;
                 const friendDiv = document.createElement('div');
-                friendDiv.className = `friend-card ${isOnline ? 'online' : 'offline'}`;
+                friendDiv.className = `friend-card offline`;
                 
                 friendDiv.innerHTML = `
                     <div class="friend-info" onclick="joinFriend('${username}')">
                         <div class="friend-avatar">🧱</div>
                         <div class="friend-details">
                             <span class="friend-name">${username}</span>
-                            <span class="friend-last-seen ${isOnline ? 'online' : ''}">
-                                ${isOnline ? '🟢 В сети' : '⚪ Офлайн'}
-                            </span>
+                            <span class="friend-last-seen">⚪ В игре</span>
                         </div>
                     </div>
                     <div class="friend-actions">
@@ -2094,179 +2019,184 @@
             });
         }
         
-        // ==================== ГЛОБАЛЬНЫЙ МУЛЬТИПЛЕЕР ====================
+        // ==================== P2P МУЛЬТИПЛЕЕР (РАБОЧАЯ ВЕРСИЯ) ====================
+        let peer = null;
+        let connections = new Map();
         let otherPlayers = new Map();
-        let myPlayerId = null;
-        let joinTarget = null;
+        let myPeerId = null;
         
-        function initFirebase() {
+        function initMultiplayer() {
             return new Promise((resolve) => {
                 try {
-                    const app = firebase.initializeApp(firebaseConfig);
-                    database = firebase.database();
-                    
-                    playersRef = database.ref('parkour_maze_players');
-                    
-                    database.ref('.info/connected').on('value', (snap) => {
-                        if (snap.val() === true) {
-                            isConnected = true;
-                            document.getElementById('server-status').textContent = '🌍 НА ГЛОБАЛЬНОМ СЕРВЕРЕ';
-                            document.getElementById('server-status').style.color = '#4CAF50';
-                            
-                            if (myPlayerId) {
-                                registerPlayer();
-                            }
-                        } else {
-                            isConnected = false;
-                            document.getElementById('server-status').textContent = '🌍 ОФФЛАЙН РЕЖИМ';
-                            document.getElementById('server-status').style.color = '#ff5555';
-                        }
+                    // Используем публичный сервер PeerJS
+                    peer = new Peer({
+                        host: '0.peerjs.com',
+                        port: 443,
+                        secure: true,
+                        debug: 2
                     });
                     
-                    resolve();
+                    peer.on('open', (id) => {
+                        myPeerId = id;
+                        console.log('PeerJS ID:', id);
+                        document.getElementById('server-status').textContent = '🟢 P2P СОЕДИНЕНИЕ УСТАНОВЛЕНО';
+                        document.getElementById('server-status').style.color = '#4CAF50';
+                        
+                        // Слушаем входящие подключения
+                        peer.on('connection', (conn) => {
+                            handleConnection(conn);
+                        });
+                        
+                        // Периодически обновляем счетчик
+                        setInterval(() => {
+                            document.getElementById('players-count').textContent = `👥 ${connections.size + 1} в комнате`;
+                            document.getElementById('global-online').textContent = connections.size + 1;
+                            document.getElementById('game-players').textContent = connections.size + 1;
+                        }, 1000);
+                        
+                        resolve();
+                    });
+                    
+                    peer.on('error', (err) => {
+                        console.log('PeerJS error:', err);
+                        document.getElementById('server-status').textContent = '🟡 ОФФЛАЙН РЕЖИМ (одиночная игра)';
+                        document.getElementById('server-status').style.color = '#ffaa00';
+                        resolve();
+                    });
+                    
                 } catch (e) {
-                    console.log('Firebase не доступен');
-                    document.getElementById('server-status').textContent = '🌍 ОФФЛАЙН РЕЖИМ';
-                    document.getElementById('server-status').style.color = '#ff5555';
+                    console.log('PeerJS не доступен');
+                    document.getElementById('server-status').textContent = '🟡 ОФФЛАЙН РЕЖИМ';
+                    document.getElementById('server-status').style.color = '#ffaa00';
                     resolve();
                 }
             });
         }
         
-        function registerPlayer() {
-            if (!playersRef || !isConnected) return;
+        function handleConnection(conn) {
+            connections.set(conn.peer, conn);
             
-            // Проверяем, не хотим ли мы присоединиться к другу
-            const joinFriend = sessionStorage.getItem('joinFriend');
-            let startPos = { x: 0, y: 5, z: 10 };
-            
-            if (joinFriend && users[joinFriend]?.online) {
-                // TODO: Получить позицию друга из Firebase
-                startPos = { x: 0, y: 5, z: 10 };
-                sessionStorage.removeItem('joinFriend');
-            }
-            
-            myPlayerId = currentUser ? currentUser.username + '_' + Date.now() : 'player_' + Date.now();
-            myPlayerRef = database.ref('parkour_maze_players/' + myPlayerId);
-            
-            myPlayerRef.set({
-                username: currentUser ? currentUser.username : 'Игрок',
-                position: startPos,
-                colors: playerColors,
-                lastSeen: Date.now()
+            conn.on('open', () => {
+                console.log('Подключен игрок:', conn.peer);
+                
+                // Отправляем свою позицию
+                sendPosition(conn);
+                
+                conn.on('data', (data) => {
+                    handlePlayerData(conn.peer, data);
+                });
+                
+                conn.on('close', () => {
+                    connections.delete(conn.peer);
+                    removeOtherPlayer(conn.peer);
+                });
             });
+        }
+        
+        function sendPosition(conn) {
+            if (!conn || !conn.open || !localPlayerBody) return;
             
-            myPlayerRef.onDisconnect().remove();
+            conn.send({
+                type: 'position',
+                username: currentUser ? currentUser.username : 'Игрок',
+                x: localPlayerBody.position.x,
+                y: localPlayerBody.position.y,
+                z: localPlayerBody.position.z,
+                headColor: playerColors.head,
+                bodyColor: playerColors.body,
+                legsColor: playerColors.legs,
+                armsColor: playerColors.arms
+            });
+        }
+        
+        function broadcastPosition() {
+            if (!localPlayerBody || connections.size === 0) return;
             
-            playersRef.on('child_added', (snapshot) => {
-                const id = snapshot.key;
-                const data = snapshot.val();
-                
-                if (id === myPlayerId) return;
-                if (!data || !data.position) return;
-                
+            const data = {
+                type: 'position',
+                username: currentUser ? currentUser.username : 'Игрок',
+                x: localPlayerBody.position.x,
+                y: localPlayerBody.position.y,
+                z: localPlayerBody.position.z,
+                headColor: playerColors.head,
+                bodyColor: playerColors.body,
+                legsColor: playerColors.legs,
+                armsColor: playerColors.arms
+            };
+            
+            connections.forEach((conn) => {
+                if (conn.open) {
+                    conn.send(data);
+                }
+            });
+        }
+        
+        function handlePlayerData(id, data) {
+            if (data.type === 'position') {
                 if (!otherPlayers.has(id)) {
-                    const model = createMultiplayerModel(data.colors || playerColors);
+                    const model = createMultiplayerModel(data);
                     if (model && scene) {
-                        model.position.set(data.position.x, data.position.y, data.position.z);
+                        model.position.set(data.x, data.y, data.z);
                         scene.add(model);
                         
                         otherPlayers.set(id, {
                             model: model,
-                            targetPos: new THREE.Vector3(data.position.x, data.position.y, data.position.z),
-                            username: data.username || 'Игрок'
+                            targetPos: new THREE.Vector3(data.x, data.y, data.z)
                         });
-                        
-                        updatePlayersCount();
                     }
-                }
-            });
-            
-            playersRef.on('child_changed', (snapshot) => {
-                const id = snapshot.key;
-                const data = snapshot.val();
-                
-                if (id === myPlayerId) return;
-                if (!data || !data.position) return;
-                
-                if (otherPlayers.has(id)) {
+                } else {
                     const player = otherPlayers.get(id);
-                    if (player && player.targetPos) {
-                        player.targetPos.set(data.position.x, data.position.y, data.position.z);
+                    if (player) {
+                        player.targetPos.set(data.x, data.y, data.z);
                     }
                 }
-            });
-            
-            playersRef.on('child_removed', (snapshot) => {
-                const id = snapshot.key;
-                
-                if (otherPlayers.has(id)) {
-                    const player = otherPlayers.get(id);
-                    if (player && player.model && scene) {
-                        scene.remove(player.model);
-                    }
-                    otherPlayers.delete(id);
-                    updatePlayersCount();
-                }
-            });
-            
-            setInterval(() => {
-                if (playersRef && isConnected) {
-                    playersRef.once('value', (snapshot) => {
-                        const count = snapshot.numChildren();
-                        document.getElementById('players-count').textContent = `👥 ${count} в мире`;
-                        document.getElementById('global-online').textContent = count;
-                        document.getElementById('game-players').textContent = count;
-                    });
-                }
-            }, 2000);
-        }
-        
-        function updatePlayersCount() {
-            if (playersRef && isConnected) {
-                playersRef.once('value', (snapshot) => {
-                    const count = snapshot.numChildren();
-                    document.getElementById('players-count').textContent = `👥 ${count} в мире`;
-                    document.getElementById('global-online').textContent = count;
-                    document.getElementById('game-players').textContent = count;
-                });
             }
         }
         
-        function createMultiplayerModel(colors) {
+        function removeOtherPlayer(id) {
+            if (otherPlayers.has(id)) {
+                const player = otherPlayers.get(id);
+                if (player && player.model && scene) {
+                    scene.remove(player.model);
+                }
+                otherPlayers.delete(id);
+            }
+        }
+        
+        function createMultiplayerModel(data) {
             try {
                 const group = new THREE.Group();
                 
                 function getMaterial(hexColor) {
-                    return new THREE.MeshStandardMaterial({ color: hexColor });
+                    return new THREE.MeshStandardMaterial({ color: hexColor || '#3366ff' });
                 }
                 
-                const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), getMaterial(colors.body || '#3366ff'));
+                const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), getMaterial(data.bodyColor));
                 torso.position.y = 1.6;
                 torso.castShadow = true;
                 group.add(torso);
                 
-                const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), getMaterial(colors.head || '#ffccaa'));
+                const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), getMaterial(data.headColor));
                 head.position.y = 3;
                 head.castShadow = true;
                 group.add(head);
                 
-                const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), getMaterial(colors.legs || '#2244aa'));
+                const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), getMaterial(data.legsColor));
                 leftLeg.position.set(-0.4, 0.2, 0);
                 leftLeg.castShadow = true;
                 group.add(leftLeg);
                 
-                const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), getMaterial(colors.legs || '#2244aa'));
+                const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), getMaterial(data.legsColor));
                 rightLeg.position.set(0.4, 0.2, 0);
                 rightLeg.castShadow = true;
                 group.add(rightLeg);
                 
-                const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), getMaterial(colors.arms || '#2244aa'));
+                const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), getMaterial(data.armsColor));
                 leftArm.position.set(-0.8, 1.8, 0);
                 leftArm.castShadow = true;
                 group.add(leftArm);
                 
-                const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), getMaterial(colors.arms || '#2244aa'));
+                const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), getMaterial(data.armsColor));
                 rightArm.position.set(0.8, 1.8, 0);
                 rightArm.castShadow = true;
                 group.add(rightArm);
@@ -2298,15 +2228,16 @@
                 document.getElementById('mobile-controls').classList.add('active');
             }
             
-            await initFirebase();
+            await initMultiplayer();
             
             initThreeJSGame(document.getElementById('game-canvas'));
             initMobileControls();
         }
         
         function exitGame() {
-            if (myPlayerRef) {
-                myPlayerRef.remove();
+            if (peer) {
+                connections.forEach((conn) => conn.close());
+                peer.destroy();
             }
             
             document.getElementById('menu-container').style.display = 'flex';
@@ -2786,17 +2717,9 @@
                     document.getElementById('jump-button').classList.remove('active');
                 }
                 
-                const now = Date.now();
-                if (now - lastUpdateTime > 100 && isConnected && myPlayerRef) {
-                    myPlayerRef.update({
-                        position: {
-                            x: localPlayerBody.position.x,
-                            y: localPlayerBody.position.y,
-                            z: localPlayerBody.position.z
-                        },
-                        lastSeen: now
-                    });
-                    lastUpdateTime = now;
+                // Отправляем позицию другим игрокам
+                if (connections.size > 0) {
+                    broadcastPosition();
                 }
                 
                 otherPlayers.forEach((player) => {
