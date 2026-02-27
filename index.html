@@ -898,6 +898,11 @@
                     <i>🎨</i>
                     <span>Аватар</span>
                 </div>
+                <!-- Новая вкладка "Настройки" -->
+                <div class="nav-item" onclick="switchPage('settings')">
+                    <i>⚙️</i>
+                    <span>Настройки</span>
+                </div>
                 <div class="nav-item" onclick="switchPage('friends')">
                     <i>👥</i>
                     <span>Друзья</span>
@@ -1028,6 +1033,16 @@
                             <div class="color-option" style="background: #aa22aa;" onclick="setPartColor('arms', '#aa22aa', this)"></div>
                         </div>
                     </div>
+                </div>
+            </div>
+            <!-- Новая секция "Настройки" -->
+            <div id="settings-section" class="content-section">
+                <h2 style="color: #fff; margin-bottom: 20px;">Настройки аккаунта</h2>
+                <div style="background: #1e1e1e; border-radius: 16px; padding: 30px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                    <h3 style="color: #fff; margin-bottom: 10px;">Удаление аккаунта</h3>
+                    <p style="color: #888; margin-bottom: 30px;">Это действие невозможно отменить. Все ваши данные будут удалены навсегда.</p>
+                    <button class="login-btn" style="background: #ff5555; width: auto; display: inline-block; padding: 15px 40px;" onclick="deleteAccount()">УДАЛИТЬ АККАУНТ</button>
                 </div>
             </div>
             <div id="friends-section" class="content-section">
@@ -1245,6 +1260,7 @@
                 'home': 'Главная страница',
                 'profile': 'Профиль',
                 'avatar': 'Аватар',
+                'settings': 'Настройки',   // ← новая страница
                 'friends': 'Друзья'
             };
             document.getElementById('page-title').textContent = titles[page];
@@ -1255,6 +1271,24 @@
 
         function selectGame() {
             document.querySelector('.game-card-large').classList.add('selected');
+        }
+
+        // ==================== УДАЛЕНИЕ АККАУНТА ====================
+        function deleteAccount() {
+            if (!currentUser) return;
+            if (currentUser.isGuest) {
+                alert('Гости не могут удалить аккаунт. Просто выйдите.');
+                return;
+            }
+            if (confirm('Вы уверены, что хотите удалить аккаунт? Это действие необратимо.')) {
+                // Удаляем пользователя из базы
+                if (users[currentUser.username]) {
+                    delete users[currentUser.username];
+                    saveUsers();
+                }
+                // Выходим
+                logout();
+            }
         }
 
         // ==================== МУЛЬТИПЛЕЕР (ФИНАЛЬНАЯ ВЕРСИЯ) ====================
