@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Yourblocks — Надёжный мультиплеер (Облако)</title>
+    <title>Yourblocks — Облачные аккаунты</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         * {
@@ -852,7 +852,7 @@
             cursor: pointer;
         }
     </style>
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -1121,7 +1121,7 @@
     <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
 
     <script>
-        // ==================== FIREBASE ИНИЦИАЛИЗАЦИЯ (ВАШ КОНФИГ) ====================
+        // ==================== ВАШ КОНФИГ FIREBASE ====================
         const firebaseConfig = {
             apiKey: "AIzaSyCMgDxuPbye5przC57JAHd_6PEDbAc3Zdu",
             authDomain: "yourlocks-ccdb07.firebaseapp.com",
@@ -1136,7 +1136,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // ==================== СИСТЕМА АККАУНТОВ (ОБЛАЧНАЯ) ====================
+        // ==================== СИСТЕМА АККАУНТОВ ====================
         let currentUser = null;
 
         function showLoading() {
@@ -1204,7 +1204,8 @@
                 loginSuccess();
             } catch (error) {
                 console.error('Login error:', error);
-                errorDiv.textContent = 'Ошибка подключения к серверу';
+                // Показываем реальную ошибку от Firebase
+                errorDiv.textContent = 'Ошибка: ' + (error.message || 'Неизвестная ошибка');
                 errorDiv.style.display = 'block';
                 hideLoading();
             }
@@ -1269,7 +1270,7 @@
                 loginSuccess();
             } catch (error) {
                 console.error('Register error:', error);
-                errorDiv.textContent = 'Ошибка подключения к серверу';
+                errorDiv.textContent = 'Ошибка: ' + (error.message || 'Неизвестная ошибка');
                 errorDiv.style.display = 'block';
                 hideLoading();
             }
@@ -1353,7 +1354,7 @@
                     logout();
                 } catch (error) {
                     console.error('Delete error:', error);
-                    alert('Ошибка при удалении аккаунта');
+                    alert('Ошибка при удалении аккаунта: ' + error.message);
                 }
                 hideLoading();
             }
@@ -1414,7 +1415,7 @@
             document.querySelector('.game-card-large').classList.add('selected');
         }
 
-        // ==================== МУЛЬТИПЛЕЕР (ОСТАЁТСЯ БЕЗ ИЗМЕНЕНИЙ) ====================
+        // ==================== МУЛЬТИПЛЕЕР ====================
         let peer = null;
         let connections = new Map();
         let otherPlayers = new Map();
