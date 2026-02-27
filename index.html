@@ -2,9 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Yourblocks — Облачные аккаунты</title>
+    <title>Yourblocks — Облачные аккаунты (финальная версия)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
+        /* Стили без изменений (те же, что в предыдущих версиях) */
         * {
             margin: 0;
             padding: 0;
@@ -1136,6 +1137,9 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // !!! ВАЖНО: принудительно включаем сеть (решает проблему "client is offline")
+        db.enableNetwork().catch(err => console.warn("Ошибка включения сети:", err));
+
         // ==================== СИСТЕМА АККАУНТОВ ====================
         let currentUser = null;
 
@@ -1173,6 +1177,13 @@
                 return;
             }
 
+            // Проверка онлайн-статуса браузера
+            if (!navigator.onLine) {
+                errorDiv.textContent = 'Нет подключения к интернету';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
             showLoading();
             
             try {
@@ -1204,8 +1215,9 @@
                 loginSuccess();
             } catch (error) {
                 console.error('Login error:', error);
-                // Показываем реальную ошибку от Firebase
-                errorDiv.textContent = 'Ошибка: ' + (error.message || 'Неизвестная ошибка');
+                // Показываем код ошибки и сообщение
+                const errorCode = error.code ? ` (${error.code})` : '';
+                errorDiv.textContent = 'Ошибка: ' + (error.message || 'Неизвестная ошибка') + errorCode;
                 errorDiv.style.display = 'block';
                 hideLoading();
             }
@@ -1231,6 +1243,12 @@
             
             if (password.length < 3) {
                 errorDiv.textContent = 'Пароль должен быть минимум 3 символа';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (!navigator.onLine) {
+                errorDiv.textContent = 'Нет подключения к интернету';
                 errorDiv.style.display = 'block';
                 return;
             }
@@ -1270,7 +1288,8 @@
                 loginSuccess();
             } catch (error) {
                 console.error('Register error:', error);
-                errorDiv.textContent = 'Ошибка: ' + (error.message || 'Неизвестная ошибка');
+                const errorCode = error.code ? ` (${error.code})` : '';
+                errorDiv.textContent = 'Ошибка: ' + (error.message || 'Неизвестная ошибка') + errorCode;
                 errorDiv.style.display = 'block';
                 hideLoading();
             }
@@ -1354,7 +1373,7 @@
                     logout();
                 } catch (error) {
                     console.error('Delete error:', error);
-                    alert('Ошибка при удалении аккаунта: ' + error.message);
+                    alert('Ошибка при удалении аккаунта: ' + (error.message || error));
                 }
                 hideLoading();
             }
