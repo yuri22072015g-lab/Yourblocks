@@ -5,9 +5,826 @@
     <title>Yourblocks — Облачный мультиплеер</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* Все стили без изменений (см. предыдущий полный код) */
-        /* Для краткости они не дублируются, но должны быть здесь */
-        /* В реальном ответе я бы вставил полный CSS из предыдущего сообщения */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            overflow: hidden;
+            background: #141414;
+            touch-action: none;
+        }
+        #login-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s;
+        }
+        .login-container {
+            background: rgba(30, 30, 40, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 30px;
+            width: 90%;
+            max-width: 400px;
+            border: 2px solid #4CAF50;
+            box-shadow: 0 0 50px rgba(76, 175, 80, 0.3);
+            animation: slideUp 0.5s;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .login-logo {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #4CAF50;
+        }
+        .login-title {
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: white;
+        }
+        .login-subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .login-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px;
+            border-radius: 50px;
+        }
+        .login-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #888;
+            font-weight: bold;
+        }
+        .login-tab.active {
+            background: #4CAF50;
+            color: white;
+        }
+        .login-form {
+            display: none;
+        }
+        .login-form.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            display: block;
+            color: #888;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid #333;
+            border-radius: 15px;
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+        .login-btn:hover {
+            transform: scale(1.02);
+            background: #45a049;
+        }
+        .guest-btn {
+            width: 100%;
+            padding: 15px;
+            background: transparent;
+            color: #888;
+            border: 2px solid #333;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .guest-btn:hover {
+            border-color: #4CAF50;
+            color: white;
+        }
+        .error-message {
+            color: #ff5555;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        #menu-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #141414;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+            color: white;
+        }
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 250px;
+            height: 100%;
+            background: #1e1e1e;
+            padding: 20px 0;
+            border-right: 1px solid #333;
+            z-index: 100;
+        }
+        .sidebar-header {
+            padding: 0 20px 20px 20px;
+            border-bottom: 1px solid #333;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+        .logo span {
+            color: #4CAF50;
+        }
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            background: #2a2a2a;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            border: 2px solid #4CAF50;
+        }
+        .user-info-side {
+            flex: 1;
+        }
+        .user-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 4px;
+            color: #fff;
+        }
+        .user-status {
+            font-size: 12px;
+            color: #4CAF50;
+        }
+        .user-status span {
+            color: #888;
+            margin-left: 5px;
+        }
+        .nav-menu {
+            padding: 20px 0;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .nav-item:hover {
+            background: #2a2a2a;
+            color: #fff;
+        }
+        .nav-item.active {
+            background: #4CAF50;
+            color: white;
+        }
+        .nav-item i {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px 30px;
+            min-height: 100vh;
+        }
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .content-header h1 {
+            font-size: 28px;
+            color: #fff;
+        }
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            color: #888;
+        }
+        .header-stats span {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+        .game-card-large {
+            background: #1e1e1e;
+            border-radius: 20px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .game-card-large:hover {
+            transform: translateY(-5px);
+            border-color: #4CAF50;
+        }
+        .game-card-large.selected {
+            border-color: #4CAF50;
+            box-shadow: 0 0 40px rgba(76, 175, 80, 0.4);
+        }
+        .game-image-large {
+            height: 200px;
+            background: linear-gradient(135deg, #2a5a2a, #1a3a1a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            position: relative;
+        }
+        .game-image-large::after {
+            content: '▶';
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: #4CAF50;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .game-card-large:hover .game-image-large::after {
+            opacity: 1;
+        }
+        .game-info-large {
+            padding: 25px;
+            text-align: center;
+        }
+        .game-title-large {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #4CAF50;
+        }
+        .game-description-large {
+            font-size: 16px;
+            color: #888;
+            margin-bottom: 20px;
+        }
+        .game-features {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .feature {
+            text-align: center;
+        }
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .feature-text {
+            font-size: 14px;
+            color: #888;
+        }
+        .feature-text span {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .profile-header {
+            background: #1e1e1e;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .profile-avatar-large {
+            width: 120px;
+            height: 120px;
+            background: #2a2a2a;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            border: 4px solid #4CAF50;
+        }
+        .profile-info h2 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        .profile-stats {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .stat-label {
+            color: #888;
+            font-size: 13px;
+        }
+        .customization-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .color-section {
+            background: #1e1e1e;
+            border-radius: 16px;
+            padding: 20px;
+        }
+        .color-section h3 {
+            margin-bottom: 15px;
+            color: #fff;
+            font-size: 16px;
+        }
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .color-option {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        .color-option.selected {
+            border-color: white;
+            box-shadow: 0 0 15px currentColor;
+        }
+        .play-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.5);
+            z-index: 1001;
+            transition: all 0.3s;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .play-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(76, 175, 80, 0.7);
+        }
+        .play-button:active {
+            transform: scale(0.95);
+        }
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            display: none;
+        }
+        #game-container.active {
+            display: block;
+        }
+        .game-exit-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 200;
+            background: rgba(255, 80, 80, 0.9);
+            color: white;
+            border: 2px solid white;
+            width: 50px;
+            height: 50px;
+            border-radius: 25px;
+            font-size: 24px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(255,0,0,0.5);
+            transition: all 0.3s;
+        }
+        .game-exit-button:hover {
+            transform: scale(1.1);
+            background: rgba(255, 40, 40, 1);
+        }
+        .game-exit-button:active {
+            transform: scale(0.95);
+        }
+        .exit-hint {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            z-index: 200;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 30px;
+            font-size: 12px;
+            border: 1px solid #ff5555;
+            backdrop-filter: blur(5px);
+        }
+        .ground-indicator {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            border: 2px solid #4CAF50;
+            z-index: 200;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s;
+        }
+        .ground-indicator.onground {
+            border-color: #4CAF50;
+            color: #4CAF50;
+        }
+        .ground-indicator.air {
+            border-color: #ff5555;
+            color: #ff5555;
+        }
+        .players-count {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 200;
+            background: rgba(0,0,0,0.7);
+            color: #4CAF50;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            border: 2px solid #4CAF50;
+            backdrop-filter: blur(5px);
+        }
+        .server-status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            background: rgba(0,0,0,0.7);
+            color: #4CAF50;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            border: 2px solid #4CAF50;
+            backdrop-filter: blur(5px);
+            white-space: nowrap;
+        }
+        .jump-hint {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            z-index: 200;
+        }
+        #mobile-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 150;
+            pointer-events: none;
+            display: none;
+        }
+        #mobile-controls.active {
+            display: block;
+        }
+        #left-area {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50%;
+            height: 100%;
+            z-index: 151;
+            pointer-events: auto;
+            background: transparent;
+            touch-action: none;
+        }
+        #right-area {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%;
+            height: 100%;
+            z-index: 151;
+            pointer-events: auto;
+            background: transparent;
+            touch-action: none;
+        }
+        #joystick-left {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 120px;
+            height: 120px;
+            background: rgba(30, 30, 40, 0.7);
+            border-radius: 60px;
+            backdrop-filter: blur(10px);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            z-index: 152;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #joystick-handle {
+            width: 50px;
+            height: 50px;
+            background: rgba(76, 175, 80, 0.9);
+            border-radius: 25px;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+            transition: transform 0.01s;
+            border: 2px solid white;
+        }
+        #jump-button {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 80, 80, 0.9);
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            border: 3px solid white;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+            z-index: 152;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.1s;
+        }
+        #jump-button.active {
+            transform: scale(0.9);
+            background: rgba(255, 40, 40, 1);
+        }
+        .logout-btn {
+            position: fixed;
+            top: 20px;
+            left: 270px;
+            background: rgba(255, 80, 80, 0.9);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 1002;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid white;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: rgba(255, 40, 40, 1);
+            transform: scale(1.05);
+        }
+        .logout-btn:active {
+            transform: scale(0.95);
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+                overflow: hidden;
+            }
+            .sidebar .logo,
+            .user-profile,
+            .nav-item span {
+                display: none;
+            }
+            .main-content {
+                margin-left: 70px;
+                padding: 15px;
+            }
+            .nav-item {
+                justify-content: center;
+                padding: 15px;
+            }
+            .nav-item i {
+                margin: 0;
+                font-size: 24px;
+            }
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .game-features {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .play-button {
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 25px;
+                font-size: 16px;
+            }
+            .logout-btn {
+                left: 90px;
+                padding: 8px 15px;
+                font-size: 12px;
+            }
+            .game-exit-button {
+                width: 60px;
+                height: 60px;
+                font-size: 30px;
+            }
+            .server-status {
+                font-size: 12px;
+                padding: 5px 10px;
+                top: 10px;
+            }
+            .players-count {
+                font-size: 12px;
+                padding: 5px 10px;
+                top: 10px;
+                left: 10px;
+            }
+            #joystick-left {
+                width: 100px;
+                height: 100px;
+                bottom: 30px;
+                left: 30px;
+            }
+            #joystick-handle {
+                width: 40px;
+                height: 40px;
+            }
+            #jump-button {
+                width: 80px;
+                height: 80px;
+                bottom: 30px;
+                right: 30px;
+                font-size: 16px;
+            }
+        }
+
+        /* Отладочная панель */
+        #debug-panel {
+            position: absolute;
+            bottom: 250px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: #0ff;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 12px;
+            z-index: 300;
+            border: 2px solid #0ff;
+            display: none;
+            max-width: 80%;
+            word-break: break-word;
+            text-align: center;
+            pointer-events: none;
+        }
+        #manual-connect {
+            position: absolute;
+            bottom: 200px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 300;
+            display: flex;
+            gap: 5px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 30px;
+            border: 2px solid #4CAF50;
+        }
+        #manual-connect input {
+            padding: 8px;
+            border-radius: 20px;
+            border: none;
+            width: 150px;
+            background: #333;
+            color: white;
+        }
+        #manual-connect button {
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
     <!-- Firebase SDK (модули) -->
     <script type="module">
@@ -45,12 +862,6 @@
         window.firebaseOnAuthStateChanged = onAuthStateChanged;
     </script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <!-- Три и Каннон остаются -->
-</head>
-<body>
-    <!-- Вся разметка без изменений (login-screen, menu-container, game-container) -->
-    <!-- ... -->
-
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
 
@@ -281,18 +1092,650 @@
             document.querySelector('.game-card-large').classList.add('selected');
         }
 
-        // ==================== МУЛЬТИПЛЕЕР И ИГРА (БЕЗ ИЗМЕНЕНИЙ) ====================
-        // ... (весь остальной код из предыдущего ответа: initMultiplayer, handleConnection, и т.д.)
-        // Он остаётся точно таким же, как в предыдущем полном листинге.
-        // Для краткости я не дублирую его здесь, но в реальном ответе он должен быть.
+        // ==================== МУЛЬТИПЛЕЕР (ФИНАЛЬНАЯ ВЕРСИЯ) ====================
+        let peer = null;
+        let connections = new Map();
+        let otherPlayers = new Map();
+        let myPeerId = null;
+        const ROOM_ID = 'yourblocks_global_room';
 
-        // ==================== ЗАПУСК ИГРЫ ====================
+        function debugLog(msg) {
+            console.log('[MULTIPLAYER]', msg);
+            const panel = document.getElementById('debug-panel');
+            panel.style.display = 'block';
+            panel.innerHTML = msg;
+            setTimeout(() => { panel.style.display = 'none'; }, 5000);
+        }
+
+        function initMultiplayer() {
+            return new Promise((resolve) => {
+                try {
+                    // Пытаемся занять фиксированный ID (стать хостом)
+                    peer = new Peer(ROOM_ID, {
+                        host: '0.peerjs.com',
+                        port: 443,
+                        secure: true,
+                        debug: 2
+                    });
+
+                    peer.on('open', (id) => {
+                        myPeerId = id;
+                        debugLog(`✅ Я хост, ID: ${id}`);
+                        document.getElementById('server-status').textContent = '🟢 ХОСТ КОМНАТЫ';
+                        document.getElementById('manual-connect').style.display = 'flex';
+                        document.getElementById('peer-id-input').placeholder = 'Введите ID друга (если нужно)';
+
+                        peer.on('connection', (conn) => handleConnection(conn));
+                        resolve();
+                    });
+
+                    peer.on('error', (err) => {
+                        console.error('PeerJS error:', err);
+                        if (err.type === 'unavailable-id') {
+                            // ID занят, значит комната уже есть – подключаемся как клиент
+                            debugLog('🟡 Комната существует, подключаюсь как клиент...');
+                            peer = new Peer({
+                                host: '0.peerjs.com',
+                                port: 443,
+                                secure: true,
+                                debug: 2
+                            });
+                            peer.on('open', (id) => {
+                                myPeerId = id;
+                                debugLog(`✅ Я клиент, мой ID: ${id}`);
+                                document.getElementById('server-status').textContent = '🟢 ПОДКЛЮЧЕНИЕ К КОМНАТЕ...';
+                                // Пытаемся подключиться к хосту
+                                const conn = peer.connect(ROOM_ID);
+                                if (conn) {
+                                    handleConnection(conn);
+                                } else {
+                                    debugLog('❌ Не удалось подключиться к хосту');
+                                }
+                                peer.on('connection', (conn) => handleConnection(conn));
+                                document.getElementById('manual-connect').style.display = 'flex';
+                                resolve();
+                            });
+                            peer.on('error', (e) => {
+                                debugLog('❌ Ошибка клиента: ' + e);
+                                resolve();
+                            });
+                        } else {
+                            debugLog('❌ Ошибка PeerJS: ' + err.type);
+                            document.getElementById('server-status').textContent = '🔴 ОФФЛАЙН';
+                            resolve();
+                        }
+                    });
+                } catch (e) {
+                    debugLog('❌ Критическая ошибка: ' + e);
+                    resolve();
+                }
+            });
+        }
+
+        function handleConnection(conn) {
+            const peerId = conn.peer;
+            debugLog(`🔌 Соединение с ${peerId}`);
+
+            conn.on('open', () => {
+                debugLog(`✅ Соединение установлено с ${peerId}`);
+                connections.set(peerId, conn);
+                updatePlayersCount();
+
+                // Отправляем свою информацию
+                sendMyInfo(conn);
+
+                conn.on('data', (data) => handleData(peerId, data));
+                conn.on('close', () => {
+                    debugLog(`🔌 Соединение закрыто с ${peerId}`);
+                    connections.delete(peerId);
+                    removeOtherPlayer(peerId);
+                    updatePlayersCount();
+                });
+                conn.on('error', (err) => console.error('Connection error:', err));
+            });
+        }
+
+        function sendMyInfo(conn) {
+            if (!localPlayerBody) return;
+            conn.send({
+                type: 'init',
+                username: currentUser ? currentUser.username : 'Игрок',
+                x: localPlayerBody.position.x,
+                y: localPlayerBody.position.y,
+                z: localPlayerBody.position.z,
+                headColor: playerColors.head,
+                bodyColor: playerColors.body,
+                legsColor: playerColors.legs,
+                armsColor: playerColors.arms
+            });
+        }
+
+        function handleData(peerId, data) {
+            if (data.type === 'init') {
+                if (!otherPlayers.has(peerId)) {
+                    const model = createMultiplayerModel(data);
+                    if (model && scene) {
+                        model.position.set(data.x, data.y, data.z);
+                        scene.add(model);
+                        otherPlayers.set(peerId, {
+                            model: model,
+                            targetPos: new THREE.Vector3(data.x, data.y, data.z),
+                            username: data.username
+                        });
+                        debugLog(`👤 Добавлен игрок ${data.username}`);
+                        updatePlayersCount();
+                    }
+                }
+            } else if (data.type === 'position') {
+                if (otherPlayers.has(peerId)) {
+                    const player = otherPlayers.get(peerId);
+                    player.targetPos.set(data.x, data.y, data.z);
+                }
+            }
+        }
+
+        function broadcastPosition() {
+            if (!localPlayerBody || connections.size === 0) return;
+            const data = {
+                type: 'position',
+                x: localPlayerBody.position.x,
+                y: localPlayerBody.position.y,
+                z: localPlayerBody.position.z
+            };
+            connections.forEach((conn) => {
+                if (conn.open) conn.send(data);
+            });
+        }
+
+        function removeOtherPlayer(id) {
+            if (otherPlayers.has(id)) {
+                const player = otherPlayers.get(id);
+                if (player.model && scene) scene.remove(player.model);
+                otherPlayers.delete(id);
+                updatePlayersCount();
+            }
+        }
+
+        function updatePlayersCount() {
+            const count = otherPlayers.size + 1;
+            document.getElementById('players-count').textContent = `👥 ${count} в комнате`;
+            document.getElementById('global-online').textContent = count;
+            document.getElementById('game-players').textContent = count;
+        }
+
+        function createMultiplayerModel(data) {
+            try {
+                const group = new THREE.Group();
+                function getMaterial(hex) { return new THREE.MeshStandardMaterial({ color: hex }); }
+                const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), getMaterial(data.bodyColor));
+                torso.position.y = 1.6; torso.castShadow = true; group.add(torso);
+                const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), getMaterial(data.headColor));
+                head.position.y = 3; head.castShadow = true; group.add(head);
+                const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), getMaterial(data.legsColor));
+                leftLeg.position.set(-0.4, 0.2, 0); leftLeg.castShadow = true; group.add(leftLeg);
+                const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), getMaterial(data.legsColor));
+                rightLeg.position.set(0.4, 0.2, 0); rightLeg.castShadow = true; group.add(rightLeg);
+                const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), getMaterial(data.armsColor));
+                leftArm.position.set(-0.8, 1.8, 0); leftArm.castShadow = true; group.add(leftArm);
+                const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), getMaterial(data.armsColor));
+                rightArm.position.set(0.8, 1.8, 0); rightArm.castShadow = true; group.add(rightArm);
+                return group;
+            } catch (e) { return null; }
+        }
+
+        function manualConnect() {
+            const targetId = document.getElementById('peer-id-input').value.trim();
+            if (!targetId || !peer) return;
+            debugLog(`🔄 Ручное подключение к ${targetId}`);
+            const conn = peer.connect(targetId);
+            if (conn) handleConnection(conn);
+            else debugLog('❌ Не удалось создать соединение');
+        }
+
+        // ==================== ОСНОВНАЯ ИГРА (Three.js + Cannon) ====================
+        let scene, camera, renderer, yawObject, pitchObject, world;
+        let localPlayerBody, localModel;
+        let keys = {}, jumpPressed = false, spaceKeyDown = false;
+        let deathBlocks = [];
+        let walkTime = 0;
+        let joystickActive = false;
+        let joystickVector = { x: 0, y: 0 };
+        let jumpButtonPressed = false;
+        let cameraTouchActive = false;
+        let lastTouchX = 0, lastTouchY = 0;
+
+        function animatePlayer(model, walkTimeVal, isMoving) {
+            if (!model || model.children.length < 6) return;
+            const leftLeg = model.children[2];
+            const rightLeg = model.children[3];
+            const leftArm = model.children[4];
+            const rightArm = model.children[5];
+            if (isMoving) {
+                const swing = Math.sin(walkTimeVal) * 0.7;
+                leftLeg.rotation.x = swing;
+                rightLeg.rotation.x = -swing;
+                leftArm.rotation.x = -swing;
+                rightArm.rotation.x = swing;
+            } else {
+                leftLeg.rotation.x = 0;
+                rightLeg.rotation.x = 0;
+                leftArm.rotation.x = 0;
+                rightArm.rotation.x = 0;
+            }
+        }
+
+        function createCustomPlayerModel() {
+            const group = new THREE.Group();
+            function getMaterial(hex) { return new THREE.MeshStandardMaterial({ color: hex }); }
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), getMaterial(playerColors.body));
+            torso.position.y = 1.6; torso.castShadow = true; group.add(torso);
+            const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), getMaterial(playerColors.head));
+            head.position.y = 3; head.castShadow = true; group.add(head);
+            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), getMaterial(playerColors.legs));
+            leftLeg.position.set(-0.4, 0.2, 0); leftLeg.castShadow = true; group.add(leftLeg);
+            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), getMaterial(playerColors.legs));
+            rightLeg.position.set(0.4, 0.2, 0); rightLeg.castShadow = true; group.add(rightLeg);
+            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), getMaterial(playerColors.arms));
+            leftArm.position.set(-0.8, 1.8, 0); leftArm.castShadow = true; group.add(leftArm);
+            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), getMaterial(playerColors.arms));
+            rightArm.position.set(0.8, 1.8, 0); rightArm.castShadow = true; group.add(rightArm);
+            return group;
+        }
+
+        function isOnGround() {
+            return Math.abs(localPlayerBody.velocity.y) < 0.1;
+        }
+
+        function initThreeJSGame(container) {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            yawObject = new THREE.Object3D();
+            pitchObject = new THREE.Object3D();
+            yawObject.add(pitchObject);
+            pitchObject.add(camera);
+            scene.add(yawObject);
+            let cameraDistance = 8;
+            camera.position.set(0, 3, cameraDistance);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(20, 30, 10);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            world = new CANNON.World();
+            world.gravity.set(0, -9.82, 0);
+            const groundMaterial = new CANNON.Material("groundMaterial");
+            const playerMaterial = new CANNON.Material("playerMaterial");
+            const contactMaterial = new CANNON.ContactMaterial(playerMaterial, groundMaterial, { friction: 0.0, restitution: 0.0 });
+            world.addContactMaterial(contactMaterial);
+            world.defaultContactMaterial = contactMaterial;
+
+            deathBlocks = [];
+
+            // ==================== УРОВЕНЬ (как в предыдущих версиях) ====================
+            function createLevel() {
+                const groundMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(80, 2, 80),
+                    new THREE.MeshStandardMaterial({ color: 0x2a3a4a })
+                );
+                groundMesh.position.set(0, -1, 0);
+                groundMesh.receiveShadow = true;
+                scene.add(groundMesh);
+                const groundBody = new CANNON.Body({ mass: 0, material: groundMaterial });
+                groundBody.addShape(new CANNON.Box(new CANNON.Vec3(40, 1, 40)));
+                groundBody.position.copy(groundMesh.position);
+                world.addBody(groundBody);
+
+                const mazeStartX = 15;
+                const mazeStartZ = -20;
+                const wallPositions = [
+                    [mazeStartX, 2, mazeStartZ, 20, 4, 1],
+                    [mazeStartX + 20, 2, mazeStartZ, 1, 4, 20],
+                    [mazeStartX, 2, mazeStartZ - 10, 20, 4, 1],
+                    [mazeStartX, 2, mazeStartZ + 10, 20, 4, 1],
+                    [mazeStartX + 5, 2, mazeStartZ - 5, 1, 4, 8],
+                    [mazeStartX + 10, 2, mazeStartZ + 2, 1, 4, 8],
+                    [mazeStartX + 15, 2, mazeStartZ - 3, 1, 4, 8],
+                    [mazeStartX + 8, 2, mazeStartZ + 5, 8, 4, 1],
+                    [mazeStartX + 12, 2, mazeStartZ - 7, 8, 4, 1],
+                ];
+                wallPositions.forEach(pos => {
+                    const wallMesh = new THREE.Mesh(
+                        new THREE.BoxGeometry(pos[3], pos[4], pos[5]),
+                        new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+                    );
+                    wallMesh.position.set(pos[0], pos[1], pos[2]);
+                    wallMesh.castShadow = true;
+                    wallMesh.receiveShadow = true;
+                    scene.add(wallMesh);
+                    const wallBody = new CANNON.Body({ mass: 0, material: groundMaterial });
+                    wallBody.addShape(new CANNON.Box(new CANNON.Vec3(pos[3]/2, pos[4]/2, pos[5]/2)));
+                    wallBody.position.copy(wallMesh.position);
+                    world.addBody(wallBody);
+                });
+
+                const entranceMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(2, 1, 2),
+                    new THREE.MeshStandardMaterial({ color: 0x4CAF50 })
+                );
+                entranceMesh.position.set(mazeStartX + 2, 0.5, mazeStartZ - 5);
+                entranceMesh.castShadow = true;
+                entranceMesh.receiveShadow = true;
+                scene.add(entranceMesh);
+
+                for (let i = 0; i < 5; i++) {
+                    const deathMesh = new THREE.Mesh(
+                        new THREE.BoxGeometry(1.5, 0.5, 1.5),
+                        new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x330000 })
+                    );
+                    deathMesh.position.set(mazeStartX + 5 + i*3, 0.5, mazeStartZ - 2);
+                    deathMesh.castShadow = true;
+                    deathMesh.receiveShadow = true;
+                    scene.add(deathMesh);
+                    const deathBody = new CANNON.Body({ mass: 0, material: groundMaterial, collisionResponse: false });
+                    deathBody.addShape(new CANNON.Box(new CANNON.Vec3(0.75, 0.25, 0.75)));
+                    deathBody.position.copy(deathMesh.position);
+                    world.addBody(deathBody);
+                    deathBlocks.push(deathBody);
+                }
+
+                for (let i = 0; i < 20; i++) {
+                    const platformMesh = new THREE.Mesh(
+                        new THREE.BoxGeometry(3, 0.5, 3),
+                        new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(i / 20, 0.8, 0.5) })
+                    );
+                    let x, z;
+                    if (i < 10) {
+                        x = -10;
+                        z = -10 - i * 6;
+                    } else {
+                        x = -15 + Math.sin(i) * 8;
+                        z = -70 - (i-10) * 5;
+                    }
+                    platformMesh.position.set(x, 1 + i * 1.5, z);
+                    platformMesh.castShadow = true;
+                    platformMesh.receiveShadow = true;
+                    scene.add(platformMesh);
+                    const platformBody = new CANNON.Body({ mass: 0, material: groundMaterial });
+                    platformBody.addShape(new CANNON.Box(new CANNON.Vec3(1.5, 0.25, 1.5)));
+                    platformBody.position.copy(platformMesh.position);
+                    world.addBody(platformBody);
+                    if (i % 3 === 0 && i > 5) {
+                        const deathMesh = new THREE.Mesh(
+                            new THREE.BoxGeometry(1.2, 0.5, 1.2),
+                            new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x330000 })
+                        );
+                        deathMesh.position.set(platformMesh.position.x + 1, 1.8, platformMesh.position.z);
+                        deathMesh.castShadow = true;
+                        deathMesh.receiveShadow = true;
+                        scene.add(deathMesh);
+                        const deathBody = new CANNON.Body({ mass: 0, material: groundMaterial, collisionResponse: false });
+                        deathBody.addShape(new CANNON.Box(new CANNON.Vec3(0.6, 0.25, 0.6)));
+                        deathBody.position.copy(deathMesh.position);
+                        world.addBody(deathBody);
+                        deathBlocks.push(deathBody);
+                    }
+                }
+
+                const finishMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(5, 0.5, 5),
+                    new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0x442200 })
+                );
+                finishMesh.position.set(0, 0.5, -150);
+                finishMesh.castShadow = true;
+                finishMesh.receiveShadow = true;
+                scene.add(finishMesh);
+            }
+
+            createLevel();
+
+            localPlayerBody = new CANNON.Body({
+                mass: 5,
+                material: playerMaterial,
+                linearDamping: 0.0,
+                angularDamping: 0.0,
+                fixedRotation: true
+            });
+            localPlayerBody.addShape(new CANNON.Sphere(0.9));
+            localPlayerBody.position.set(0, 5, 10);
+            world.addBody(localPlayerBody);
+
+            localModel = createCustomPlayerModel();
+            scene.add(localModel);
+
+            // ==================== УПРАВЛЕНИЕ ====================
+            keys = {};
+            jumpPressed = false;
+            spaceKeyDown = false;
+
+            document.addEventListener("keydown", (e) => {
+                keys[e.code] = true;
+                if (e.code === "Space" && !spaceKeyDown) {
+                    jumpPressed = true;
+                    spaceKeyDown = true;
+                }
+            });
+            document.addEventListener("keyup", (e) => {
+                keys[e.code] = false;
+                if (e.code === "Space") {
+                    spaceKeyDown = false;
+                }
+            });
+
+            let mouseDown = false;
+            document.addEventListener("mousedown", (e) => {
+                if (e.button === 2) mouseDown = true;
+            });
+            document.addEventListener("mouseup", (e) => {
+                if (e.button === 2) mouseDown = false;
+            });
+            document.addEventListener("mousemove", (e) => {
+                if (!mouseDown) return;
+                yawObject.rotation.y -= e.movementX * 0.002;
+                pitchObject.rotation.x -= e.movementY * 0.002;
+                pitchObject.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitchObject.rotation.x));
+            });
+
+            const spawnPosition = new CANNON.Vec3(0, 5, 10);
+            const deathHeight = -10;
+            const groundIndicator = document.getElementById('ground-indicator');
+
+            walkTime = 0;
+            let lastSendTime = 0;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const delta = 0.016;
+                world.step(1 / 60, delta, 3);
+
+                // Смерть
+                let dead = false;
+                if (localPlayerBody.position.y < deathHeight) dead = true;
+                if (!dead) {
+                    const playerPos = localPlayerBody.position;
+                    const playerRadius = 0.9;
+                    for (let block of deathBlocks) {
+                        const blockPos = block.position;
+                        const dx = playerPos.x - blockPos.x;
+                        const dy = playerPos.y - blockPos.y;
+                        const dz = playerPos.z - blockPos.z;
+                        const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                        if (distance < playerRadius + 1.0) { dead = true; break; }
+                    }
+                }
+                if (dead) {
+                    localPlayerBody.position.copy(spawnPosition);
+                    localPlayerBody.velocity.set(0, 0, 0);
+                }
+
+                // Движение
+                const moveSpeed = 12;
+                let moveX = 0, moveZ = 0;
+                if (keys["KeyW"]) moveZ += 1;
+                if (keys["KeyS"]) moveZ -= 1;
+                if (keys["KeyA"]) moveX -= 1;
+                if (keys["KeyD"]) moveX += 1;
+                if (joystickActive) {
+                    moveX += joystickVector.x;
+                    moveZ += -joystickVector.y;
+                }
+                if (moveX !== 0 || moveZ !== 0) {
+                    const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
+                    moveX /= len; moveZ /= len;
+                    localModel.rotation.y = Math.atan2(moveX, moveZ);
+                }
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
+                forward.y = 0; right.y = 0;
+                forward.normalize(); right.normalize();
+                localPlayerBody.velocity.x = (forward.x * moveZ + right.x * moveX) * moveSpeed;
+                localPlayerBody.velocity.z = (forward.z * moveZ + right.z * moveX) * moveSpeed;
+
+                const onGround = isOnGround();
+                groundIndicator.textContent = onGround ? '🟢 НА ЗЕМЛЕ' : '🔴 В ВОЗДУХЕ';
+                groundIndicator.classList.toggle('onground', onGround);
+                groundIndicator.classList.toggle('air', !onGround);
+
+                if ((jumpPressed || jumpButtonPressed) && onGround) {
+                    localPlayerBody.velocity.y = 10;
+                    jumpPressed = false;
+                    jumpButtonPressed = false;
+                    document.getElementById('jump-button').classList.remove('active');
+                }
+
+                // Анимация
+                const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
+                if (moving) walkTime += delta * 12;
+                animatePlayer(localModel, walkTime, moving);
+
+                // Отправка позиции другим игрокам
+                if (connections.size > 0) {
+                    const now = Date.now();
+                    if (now - lastSendTime > 100) {
+                        broadcastPosition();
+                        lastSendTime = now;
+                    }
+                }
+
+                // Обновление позиций других игроков
+                otherPlayers.forEach((player) => {
+                    if (player.model && player.targetPos) {
+                        player.model.position.lerp(player.targetPos, 0.3);
+                    }
+                });
+
+                // Камера
+                camera.position.set(0, 3, cameraDistance);
+                localModel.position.copy(localPlayerBody.position);
+                yawObject.position.copy(localPlayerBody.position);
+
+                renderer.render(scene, camera);
+            }
+
+            animate();
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // ==================== МОБИЛЬНОЕ УПРАВЛЕНИЕ ====================
+        function initMobileControls() {
+            const leftArea = document.getElementById('left-area');
+            const rightArea = document.getElementById('right-area');
+            const joystick = document.getElementById('joystick-left');
+            const handle = document.getElementById('joystick-handle');
+            const jumpBtn = document.getElementById('jump-button');
+
+            leftArea.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                joystickActive = true;
+                updateJoystick(e.touches[0]);
+            });
+            leftArea.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (joystickActive) updateJoystick(e.touches[0]);
+            });
+            leftArea.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                joystickActive = false;
+                joystickVector = { x: 0, y: 0 };
+                handle.style.transform = 'translate(0px, 0px)';
+            });
+
+            function updateJoystick(touch) {
+                const rect = joystick.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                let dx = touch.clientX - centerX;
+                let dy = touch.clientY - centerY;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                const maxDistance = rect.width / 2;
+                if (distance > maxDistance) {
+                    dx = (dx / distance) * maxDistance;
+                    dy = (dy / distance) * maxDistance;
+                }
+                handle.style.transform = `translate(${dx}px, ${dy}px)`;
+                joystickVector.x = dx / maxDistance;
+                joystickVector.y = dy / maxDistance;
+            }
+
+            rightArea.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                cameraTouchActive = true;
+                lastTouchX = e.touches[0].clientX;
+                lastTouchY = e.touches[0].clientY;
+            });
+            rightArea.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (cameraTouchActive && yawObject) {
+                    const touch = e.touches[0];
+                    const deltaX = touch.clientX - lastTouchX;
+                    const deltaY = touch.clientY - lastTouchY;
+                    yawObject.rotation.y -= deltaX * 0.005;
+                    if (pitchObject) {
+                        pitchObject.rotation.x -= deltaY * 0.003;
+                        pitchObject.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitchObject.rotation.x));
+                    }
+                    lastTouchX = touch.clientX;
+                    lastTouchY = touch.clientY;
+                }
+            });
+            rightArea.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                cameraTouchActive = false;
+            });
+
+            jumpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                jumpButtonPressed = true;
+                jumpBtn.classList.add('active');
+            });
+            jumpBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                jumpButtonPressed = false;
+                jumpBtn.classList.remove('active');
+            });
+        }
+
         async function startGame() {
             document.getElementById('menu-container').style.display = 'none';
             document.getElementById('game-container').classList.add('active');
             if (window.innerWidth <= 768) document.getElementById('mobile-controls').classList.add('active');
 
-            await initMultiplayer(); // из предыдущего кода
+            await initMultiplayer(); // Ждём инициализацию мультиплеера
+
             initThreeJSGame(document.getElementById('game-canvas'));
             initMobileControls();
         }
