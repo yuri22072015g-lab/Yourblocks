@@ -1,114 +1,163 @@
-<?php
-// Запускаем сессию для хранения данных пользователя
-session_start();
-
-// Подключаемся к SQLite базе данных (файл users.db создастся автоматически)
-try {
-    $db = new PDO('sqlite:users.db');
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    // Создаём таблицу пользователей, если её нет
-    $db->exec("CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
-    )");
-} catch (PDOException $e) {
-    die("Ошибка подключения к БД: " . $e->getMessage());
-}
-
-// Обработка действий (регистрация, вход, выход)
-$message = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['register'])) {
-        // Регистрация
-        $username = trim($_POST['username']);
-        $password = $_POST['password'];
-        if ($username && $password) {
-            // Хешируем пароль
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-            try {
-                $stmt = $db->prepare("INSERT INTO users (username, password) VALUES (?, ?)");
-                $stmt->execute([$username, $hash]);
-                $message = "<p style='color:green;'>Регистрация успешна! Теперь войдите.</p>";
-            } catch (PDOException $e) {
-                $message = "<p style='color:red;'>Ошибка: возможно, имя пользователя уже занято.</p>";
-            }
-        } else {
-            $message = "<p style='color:red;'>Заполните все поля.</p>";
-        }
-    } elseif (isset($_POST['login'])) {
-        // Вход
-        $username = trim($_POST['username']);
-        $password = $_POST['password'];
-        if ($username && $password) {
-            $stmt = $db->prepare("SELECT * FROM users WHERE username = ?");
-            $stmt->execute([$username]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($user && password_verify($password, $user['password'])) {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                // Перенаправляем на ту же страницу, чтобы обновить состояние
-                header('Location: ' . $_SERVER['PHP_SELF']);
-                exit;
-            } else {
-                $message = "<p style='color:red;'>Неверное имя пользователя или пароль.</p>";
-            }
-        } else {
-            $message = "<p style='color:red;'>Заполните все поля.</p>";
-        }
-    }
-} elseif (isset($_GET['logout'])) {
-    // Выход
-    session_destroy();
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit;
-}
-?>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Простой сайт с входом</title>
+    <title>Вход через Firebase</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
-        input, button { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; }
-        .form-container { border: 1px solid #ccc; padding: 20px; border-radius: 5px; }
-        .message { margin: 10px 0; }
-        a { color: #007bff; text-decoration: none; }
-        a:hover { text-decoration: underline; }
+        body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { background: #4285f4; color: white; border: none; cursor: pointer; font-size: 16px; }
+        button:hover { background: #3367d6; }
+        .hidden { display: none; }
+        .error { color: #d32f2f; margin: 10px 0; }
+        .success { color: #388e3c; margin: 10px 0; }
+        h2 { margin-top: 0; }
+        hr { margin: 20px 0; }
     </style>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 </head>
 <body>
+    <div class="container" id="app">
+        <!-- ШАГ 1: ВСТАВЬТЕ СВОИ ДАННЫЕ FIREBASE НИЖЕ -->
+        <div style="background: #e8f0fe; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 14px;">
+            <strong>⚠️ ВАЖНО:</strong> Скопируйте свои данные из <a href="https://console.firebase.google.com/project/yourblocks-ccdb7/settings/general" target="_blank">настроек проекта</a> (раздел "Ваши приложения") и вставьте их в объект <code>firebaseConfig</code> в начале скрипта.
+        </div>
 
-<?php if (isset($_SESSION['user_id'])): ?>
-    <!-- Приветствие для залогиненного пользователя -->
-    <h1>Добро пожаловать, <?php echo htmlspecialchars($_SESSION['username']); ?>!</h1>
-    <p>Вы успешно вошли в аккаунт.</p>
-    <p><a href="?logout=1">Выйти</a></p>
-<?php else: ?>
-    <!-- Формы регистрации и входа для гостей -->
-    <h1>Добро пожаловать</h1>
-    <?php if ($message) echo "<div class='message'>$message</div>"; ?>
+        <!-- Формы для неавторизованных -->
+        <div id="unauthorized">
+            <h2>Добро пожаловать!</h2>
+            <div id="message"></div>
+            
+            <h3>Вход</h3>
+            <input type="email" id="loginEmail" placeholder="Email" required>
+            <input type="password" id="loginPassword" placeholder="Пароль" required>
+            <button onclick="login()">Войти</button>
 
-    <div class="form-container">
-        <h2>Вход</h2>
-        <form method="post">
-            <input type="text" name="username" placeholder="Имя пользователя" required>
-            <input type="password" name="password" placeholder="Пароль" required>
-            <button type="submit" name="login">Войти</button>
-        </form>
+            <hr>
+
+            <h3>Регистрация</h3>
+            <input type="email" id="regEmail" placeholder="Email" required>
+            <input type="password" id="regPassword" placeholder="Пароль (минимум 6 символов)" required>
+            <button onclick="register()">Зарегистрироваться</button>
+        </div>
+
+        <!-- Профиль авторизованного пользователя -->
+        <div id="authorized" class="hidden">
+            <h2>Личный кабинет</h2>
+            <p>Вы вошли как: <strong><span id="userEmail"></span></strong></p>
+            <p><strong>Ваш UID:</strong> <span id="userUid"></span></p>
+            <button onclick="logout()" style="background: #dc3545;">Выйти</button>
+        </div>
     </div>
 
-    <div class="form-container" style="margin-top: 20px;">
-        <h2>Регистрация</h2>
-        <form method="post">
-            <input type="text" name="username" placeholder="Имя пользователя" required>
-            <input type="password" name="password" placeholder="Пароль" required>
-            <button type="submit" name="register">Зарегистрироваться</button>
-        </form>
-    </div>
-<?php endif; ?>
+    <script>
+        // 🔥 ВСТАВЬТЕ СЮДА СВОЙ ОБЪЕКТ firebaseConfig ИЗ КОНСОЛИ FIREBASE
+        // Как получить:
+        // 1. Зайдите в консоль Firebase (https://console.firebase.google.com/)
+        // 2. Выберите проект "Yourblocks" (yourblocks-ccdb7)
+        // 3. Нажмите на шестерёнку "Настройки проекта" (Project settings)
+        // 4. В разделе "Ваши приложения" (Your apps) выберите веб-приложение "Yourblocks Web App"
+        // 5. В блоке "SDK setup and configuration" выберите "Config" и скопируйте весь объект firebaseConfig
+        //    (он выглядит примерно как показано ниже, но с вашими реальными данными)
+        const firebaseConfig = {
+            apiKey: "ВСТАВЬТЕ_API_KEY",
+            authDomain: "yourblocks-ccdb7.firebaseapp.com", // обычно ProjectID + .firebaseapp.com
+            projectId: "yourblocks-ccdb7",
+            storageBucket: "yourblocks-ccdb7.appspot.com", // обычно ProjectID + .appspot.com
+            messagingSenderId: "531017606276",             // Project number
+            appId: "1:531017606276:web:5eab2f87a2f9f5c885ced1" // App ID
+        };
 
+        // Инициализация Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Отслеживание состояния аутентификации
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Пользователь вошёл
+                document.getElementById('unauthorized').classList.add('hidden');
+                document.getElementById('authorized').classList.remove('hidden');
+                document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('userUid').textContent = user.uid;
+            } else {
+                // Пользователь вышел
+                document.getElementById('unauthorized').classList.remove('hidden');
+                document.getElementById('authorized').classList.add('hidden');
+                document.getElementById('message').innerHTML = '';
+            }
+        });
+
+        // Функция регистрации
+        function register() {
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value.trim();
+            const messageDiv = document.getElementById('message');
+            
+            if (password.length < 6) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = 'Пароль должен быть не менее 6 символов';
+                return;
+            }
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    messageDiv.className = 'success';
+                    messageDiv.textContent = 'Регистрация успешна! Выполняется вход...';
+                    document.getElementById('regEmail').value = '';
+                    document.getElementById('regPassword').value = '';
+                })
+                .catch((error) => {
+                    messageDiv.className = 'error';
+                    if (error.code === 'auth/email-already-in-use') {
+                        messageDiv.textContent = 'Этот email уже зарегистрирован';
+                    } else if (error.code === 'auth/invalid-email') {
+                        messageDiv.textContent = 'Некорректный email';
+                    } else {
+                        messageDiv.textContent = 'Ошибка: ' + error.message;
+                    }
+                });
+        }
+
+        // Функция входа
+        function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            const messageDiv = document.getElementById('message');
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    messageDiv.className = 'success';
+                    messageDiv.textContent = 'Вход выполнен успешно!';
+                    document.getElementById('loginEmail').value = '';
+                    document.getElementById('loginPassword').value = '';
+                })
+                .catch((error) => {
+                    messageDiv.className = 'error';
+                    if (error.code === 'auth/user-not-found') {
+                        messageDiv.textContent = 'Пользователь не найден';
+                    } else if (error.code === 'auth/wrong-password') {
+                        messageDiv.textContent = 'Неверный пароль';
+                    } else {
+                        messageDiv.textContent = 'Ошибка: ' + error.message;
+                    }
+                });
+        }
+
+        // Функция выхода
+        function logout() {
+            auth.signOut().then(() => {
+                document.getElementById('message').className = 'success';
+                document.getElementById('message').textContent = 'Вы вышли из системы';
+            }).catch((error) => {
+                document.getElementById('message').className = 'error';
+                document.getElementById('message').textContent = 'Ошибка при выходе: ' + error.message;
+            });
+        }
+    </script>
 </body>
 </html>
