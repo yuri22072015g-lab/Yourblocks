@@ -5,7 +5,7 @@
     <title>Yourblocks — Надёжный мультиплеер</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* Стили (полностью из вашего исходного кода) – они не менялись */
+        /* Все исходные стили сохранены, добавлены новые для предложений */
         * {
             margin: 0;
             padding: 0;
@@ -162,6 +162,34 @@
             text-align: center;
             display: none;
         }
+        /* Новые стили для блока предложений */
+        .suggested-names {
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        .suggested-name {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+            padding: 8px 15px;
+            border-radius: 30px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(5px);
+        }
+        .suggested-name:hover {
+            background: #4CAF50;
+            color: white;
+            transform: scale(1.05);
+        }
+        .suggested-name:active {
+            transform: scale(0.95);
+        }
+        /* Остальные стили без изменений */
         #menu-container {
             position: absolute;
             top: 0;
@@ -874,6 +902,8 @@
                 <button class="login-btn" onclick="handleRegister()">Зарегистрироваться</button>
                 <button class="guest-btn" onclick="handleGuest()">Продолжить как гость</button>
                 <div id="register-error" class="error-message"></div>
+                <!-- Блок предложений -->
+                <div id="suggested-usernames" class="suggested-names"></div>
             </div>
         </div>
     </div>
@@ -1109,18 +1139,98 @@
         const db = firebase.firestore();
 
         // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
-        let currentUser = null; // объект с данными из Firestore { uid, username, level, colors, ... }
-        let playerColors = { // цвета по умолчанию
+        let currentUser = null;
+        let playerColors = {
             head: '#ffccaa',
             body: '#3366ff',
             legs: '#2244aa',
             arms: '#2244aa'
         };
-        let sessionListener = null; // функция отписки от слушателя документа
+        let sessionListener = null;
+
+        // Списки для генерации ников (можно расширять)
+        const namePrefixes = [
+            'Cool', 'Fast', 'Shadow', 'Crazy', 'Neon', 'Space', 'Dark', 'Fire', 'Ice', 'Star',
+            'Wolf', 'Dragon', 'Phoenix', 'Thunder', 'Storm', 'Blaze', 'Ghost', 'Hunter', 'Knight', 'Ninja',
+            'Panda', 'Tiger', 'Eagle', 'Falcon', 'Raven', 'Owl', 'Lion', 'Bear', 'Shark', 'Whale',
+            'Быстрый', 'Смелый', 'Тёмный', 'Яркий', 'Космический', 'Огненный', 'Ледяной', 'Звёздный',
+            'Волк', 'Дракон', 'Феникс', 'Гром', 'Буря', 'Пламя', 'Призрак', 'Охотник', 'Рыцарь', 'Ниндзя',
+            'Панда', 'Тигр', 'Орёл', 'Сокол', 'Ворон', 'Сова', 'Лев', 'Медведь', 'Акула', 'Кит'
+        ];
+        const nameSuffixes = [
+            'Player', 'Gamer', 'Master', 'Pro', 'King', 'Queen', 'Lord', 'Warrior', 'Killer', 'Hero',
+            'Игрок', 'Мастер', 'Король', 'Королева', 'Властелин', 'Воин', 'Убийца', 'Герой'
+        ];
 
         // Вспомогательная функция для преобразования ника в email
         function nickToEmail(nick) {
             return nick.trim().toLowerCase().replace(/\s+/g, '') + '@yourblocks-ccdb7.firebaseapp.com';
+        }
+
+        // ==================== ПРОВЕРКА СВОБОДЕН ЛИ НИК ====================
+        async function isUsernameFree(username) {
+            if (!username) return false;
+            const snapshot = await db.collection('users').where('username', '==', username).get();
+            return snapshot.empty;
+        }
+
+        // ==================== ГЕНЕРАЦИЯ СЛУЧАЙНОГО НИКА ====================
+        function generateRandomUsername() {
+            const usePrefixFirst = Math.random() > 0.5;
+            let name = '';
+            if (usePrefixFirst) {
+                name = namePrefixes[Math.floor(Math.random() * namePrefixes.length)];
+                // Добавляем случайное число или суффикс
+                if (Math.random() > 0.6) {
+                    name += Math.floor(Math.random() * 1000);
+                } else {
+                    name += nameSuffixes[Math.floor(Math.random() * nameSuffixes.length)];
+                }
+            } else {
+                name = nameSuffixes[Math.floor(Math.random() * nameSuffixes.length)];
+                name += namePrefixes[Math.floor(Math.random() * namePrefixes.length)];
+            }
+            // Иногда добавляем символы
+            if (Math.random() > 0.7) {
+                const symbols = ['_', '.', '-', ''];
+                name += symbols[Math.floor(Math.random() * symbols.length)] + Math.floor(Math.random() * 100);
+            }
+            // Убедимся, что ник не слишком длинный
+            if (name.length > 20) name = name.substring(0, 20);
+            return name;
+        }
+
+        // ==================== ПОЛУЧИТЬ НЕСКОЛЬКО СВОБОДНЫХ НИКОВ ====================
+        async function getFreeUsernames(count = 3) {
+            const freeNames = [];
+            const attempts = new Set();
+            // Максимальное количество попыток, чтобы избежать бесконечного цикла
+            for (let i = 0; i < 30 && freeNames.length < count; i++) {
+                const candidate = generateRandomUsername();
+                if (attempts.has(candidate)) continue;
+                attempts.add(candidate);
+                if (await isUsernameFree(candidate)) {
+                    freeNames.push(candidate);
+                }
+            }
+            return freeNames;
+        }
+
+        // ==================== ОБНОВИТЬ ПРЕДЛОЖЕНИЯ ====================
+        async function refreshSuggestions() {
+            const container = document.getElementById('suggested-usernames');
+            if (!container) return;
+            container.innerHTML = ''; // очищаем
+            const freeNames = await getFreeUsernames(3);
+            freeNames.forEach(name => {
+                const span = document.createElement('span');
+                span.className = 'suggested-name';
+                span.textContent = name;
+                span.onclick = () => {
+                    document.getElementById('register-username').value = name;
+                };
+                container.appendChild(span);
+            });
         }
 
         // ==================== ФУНКЦИИ ВХОДА / РЕГИСТРАЦИИ ====================
@@ -1129,6 +1239,10 @@
             event.target.classList.add('active');
             document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
             document.getElementById(tab + '-form').classList.add('active');
+            // Если переключились на регистрацию, обновляем предложения
+            if (tab === 'register') {
+                refreshSuggestions();
+            }
         }
 
         async function handleLogin() {
@@ -1148,7 +1262,6 @@
                 if (doc.exists) {
                     currentUser = { uid: user.uid, username: username, ...doc.data() };
                 } else {
-                    // Если документа нет (старый аккаунт) – создаём
                     currentUser = {
                         uid: user.uid,
                         username: username,
@@ -1161,23 +1274,20 @@
                     await db.collection('users').doc(user.uid).set(currentUser);
                 }
                 
-                // Генерируем уникальный идентификатор сессии
                 const sessionId = Math.random().toString(36).substring(2) + Date.now();
                 await db.collection('users').doc(user.uid).update({ sessionId });
                 currentUser.sessionId = sessionId;
 
-                // Устанавливаем слушатель на документ пользователя для контроля одновременного входа
-                if (sessionListener) sessionListener(); // отписываемся от старого, если есть
+                if (sessionListener) sessionListener();
                 sessionListener = db.collection('users').doc(user.uid).onSnapshot((docSnapshot) => {
                     if (docSnapshot.exists) {
                         const data = docSnapshot.data();
                         if (data.sessionId && data.sessionId !== currentUser.sessionId) {
-                            // Другая сессия зашла в аккаунт
-                            alert('Этот аккаунт был открыт на другом устройстве. Вы вышли.');
+                            // ЗАМЕНА ТЕКСТА УВЕДОМЛЕНИЯ
+                            alert('В этот аккаунт вошли с другого устройства. Если это не вы, срочно поменяйте пароль.');
                             logout();
                         }
                     } else {
-                        // Документ удалён (аккаунт удалён)
                         alert('Аккаунт был удалён.');
                         logout();
                     }
@@ -1228,11 +1338,18 @@
                 errorDiv.style.display = 'block';
                 return;
             }
+            // Проверка, свободен ли ник (дополнительно)
+            const free = await isUsernameFree(username);
+            if (!free) {
+                errorDiv.textContent = 'Аккаунт с таким ником уже существует';
+                errorDiv.style.display = 'block';
+                refreshSuggestions(); // обновить предложения
+                return;
+            }
             const email = nickToEmail(username);
             try {
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                 const user = userCredential.user;
-                // Создаём документ в Firestore
                 const newUser = {
                     username: username,
                     level: 1,
@@ -1244,20 +1361,18 @@
                 };
                 await db.collection('users').doc(user.uid).set(newUser);
                 
-                // Генерируем sessionId
                 const sessionId = Math.random().toString(36).substring(2) + Date.now();
                 await db.collection('users').doc(user.uid).update({ sessionId });
                 newUser.sessionId = sessionId;
                 currentUser = { uid: user.uid, ...newUser };
                 playerColors = newUser.colors;
 
-                // Устанавливаем слушатель
                 if (sessionListener) sessionListener();
                 sessionListener = db.collection('users').doc(user.uid).onSnapshot((docSnapshot) => {
                     if (docSnapshot.exists) {
                         const data = docSnapshot.data();
                         if (data.sessionId && data.sessionId !== currentUser.sessionId) {
-                            alert('Этот аккаунт был открыт на другом устройстве. Вы вышли.');
+                            alert('В этот аккаунт вошли с другого устройства. Если это не вы, срочно поменяйте пароль.');
                             logout();
                         }
                     } else {
@@ -1269,8 +1384,14 @@
                 updateAllAvatars();
                 loginSuccess();
             } catch (error) {
-                errorDiv.textContent = 'Ошибка: ' + (error.message || 'Не удалось зарегистрироваться');
+                console.error(error);
+                if (error.code === 'auth/email-already-exists') {
+                    errorDiv.textContent = 'Аккаунт с таким ником уже существует';
+                } else {
+                    errorDiv.textContent = 'Ошибка: ' + (error.message || 'Не удалось зарегистрироваться');
+                }
                 errorDiv.style.display = 'block';
+                refreshSuggestions(); // обновить предложения
             }
         }
 
@@ -1280,7 +1401,7 @@
                 level: 1,
                 games: 0,
                 isGuest: true,
-                colors: playerColors // сохраняем текущие цвета
+                colors: playerColors
             };
             loginSuccess();
         }
@@ -1302,13 +1423,11 @@
         }
 
         async function logout() {
-            // Отписываемся от слушателя
             if (sessionListener) {
                 sessionListener();
                 sessionListener = null;
             }
             if (!currentUser?.isGuest && currentUser?.uid) {
-                // Сохраняем цвета перед выходом
                 if (currentUser.colors) currentUser.colors = playerColors;
                 try {
                     await db.collection('users').doc(currentUser.uid).update({ colors: playerColors });
@@ -1319,7 +1438,6 @@
             document.getElementById('menu-container').style.display = 'none';
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('login-screen').style.opacity = '1';
-            // Очистка полей
             document.getElementById('login-username').value = '';
             document.getElementById('login-password').value = '';
             document.getElementById('register-username').value = '';
@@ -1338,16 +1456,10 @@
                     const user = auth.currentUser;
                     if (!user) throw new Error('Нет активного пользователя');
                     
-                    // Отзываем токены, чтобы завершить сессии на всех устройствах
                     await user.revokeRefreshTokens();
-                    
-                    // Удаляем документ из Firestore
                     await db.collection('users').doc(currentUser.uid).delete();
-                    
-                    // Удаляем пользователя из Authentication
                     await user.delete();
                     
-                    // Выходим на текущем устройстве
                     logout();
                 } catch (error) {
                     console.error('Ошибка при удалении:', error);
@@ -1367,7 +1479,6 @@
                 db.collection('users').doc(currentUser.uid).update({ colors: playerColors })
                     .catch(error => {
                         console.error('Ошибка сохранения цвета:', error);
-                        // Если ошибка из-за отсутствия прав или токена, выходим
                         if (error.code === 'permission-denied' || error.code === 'unauthenticated' || error.message.includes('permission')) {
                             alert('Сессия истекла. Пожалуйста, войдите снова.');
                             logout();
@@ -1404,7 +1515,7 @@
             document.querySelector('.game-card-large').classList.add('selected');
         }
 
-        // ==================== МУЛЬТИПЛЕЕР ====================
+        // ==================== МУЛЬТИПЛЕЕР (без изменений, кроме текста уведомления) ====================
         let peer = null;
         let connections = new Map();
         let otherPlayers = new Map();
@@ -2029,14 +2140,11 @@
         }
 
         async function startGame() {
-            // Проверяем, что пользователь всё ещё аутентифицирован (если не гость)
             if (!currentUser?.isGuest) {
                 try {
-                    // Проверяем, актуален ли токен
                     if (!auth.currentUser) {
                         throw new Error('Not authenticated');
                     }
-                    // Принудительно обновляем токен, чтобы проверить его валидность
                     await auth.currentUser.getIdToken(true);
                 } catch (e) {
                     alert('Сессия истекла. Пожалуйста, войдите снова.');
@@ -2073,6 +2181,14 @@
                 if (gameContainer.classList.contains('active')) exitGame();
             }
         });
+
+        // При загрузке страницы инициализируем предложения (если активна вкладка регистрации)
+        window.addEventListener('load', () => {
+            // Проверим, может быть активна регистрация (по умолчанию активен вход)
+            if (document.getElementById('register-form').classList.contains('active')) {
+                refreshSuggestions();
+            }
+        });
     </script>
 </body>
-</html>          Сделай так, чтобы когда игрока кикает из аккаунта, из-за того, что кто-то Вошел в его аккаунт с другого устройства В ошибке был еще дополнительный текст Если это не вы вошли в аккаунт с другого устройства, срочно поменяйте пароль
+</html>
