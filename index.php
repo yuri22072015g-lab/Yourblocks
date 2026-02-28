@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход через Firebase</title>
+    <title>Yourblocks — вход и регистрация</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
         .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -16,20 +16,15 @@
         h2 { margin-top: 0; }
         hr { margin: 20px 0; }
     </style>
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (совместимая версия) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <div class="container" id="app">
-        <!-- ШАГ 1: ВСТАВЬТЕ СВОИ ДАННЫЕ FIREBASE НИЖЕ -->
-        <div style="background: #e8f0fe; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 14px;">
-            <strong>⚠️ ВАЖНО:</strong> Скопируйте свои данные из <a href="https://console.firebase.google.com/project/yourblocks-ccdb7/settings/general" target="_blank">настроек проекта</a> (раздел "Ваши приложения") и вставьте их в объект <code>firebaseConfig</code> в начале скрипта.
-        </div>
-
         <!-- Формы для неавторизованных -->
         <div id="unauthorized">
-            <h2>Добро пожаловать!</h2>
+            <h2>Добро пожаловать в Yourblocks!</h2>
             <div id="message"></div>
             
             <h3>Вход</h3>
@@ -55,21 +50,15 @@
     </div>
 
     <script>
-        // 🔥 ВСТАВЬТЕ СЮДА СВОЙ ОБЪЕКТ firebaseConfig ИЗ КОНСОЛИ FIREBASE
-        // Как получить:
-        // 1. Зайдите в консоль Firebase (https://console.firebase.google.com/)
-        // 2. Выберите проект "Yourblocks" (yourblocks-ccdb7)
-        // 3. Нажмите на шестерёнку "Настройки проекта" (Project settings)
-        // 4. В разделе "Ваши приложения" (Your apps) выберите веб-приложение "Yourblocks Web App"
-        // 5. В блоке "SDK setup and configuration" выберите "Config" и скопируйте весь объект firebaseConfig
-        //    (он выглядит примерно как показано ниже, но с вашими реальными данными)
+        // 🔥 ВАШ ОБЪЕКТ firebaseConfig (данные из консоли)
         const firebaseConfig = {
-            apiKey: "ВСТАВЬТЕ_API_KEY",
-            authDomain: "yourblocks-ccdb7.firebaseapp.com", // обычно ProjectID + .firebaseapp.com
+            apiKey: "AIzaSyCMgDxuPbye5rpZcS7JAHD_6PEDbAc3ZdU",
+            authDomain: "yourblocks-ccdb7.firebaseapp.com",
             projectId: "yourblocks-ccdb7",
-            storageBucket: "yourblocks-ccdb7.appspot.com", // обычно ProjectID + .appspot.com
-            messagingSenderId: "531017606276",             // Project number
-            appId: "1:531017606276:web:5eab2f87a2f9f5c885ced1" // App ID
+            storageBucket: "yourblocks-ccdb7.firebasestorage.app",
+            messagingSenderId: "531017606276",
+            appId: "1:531017606276:web:5eab2f87a2f9f5c885ced1",
+            measurementId: "G-JSWF0QVSJ9"
         };
 
         // Инициализация Firebase
@@ -79,20 +68,18 @@
         // Отслеживание состояния аутентификации
         auth.onAuthStateChanged((user) => {
             if (user) {
-                // Пользователь вошёл
                 document.getElementById('unauthorized').classList.add('hidden');
                 document.getElementById('authorized').classList.remove('hidden');
                 document.getElementById('userEmail').textContent = user.email;
                 document.getElementById('userUid').textContent = user.uid;
             } else {
-                // Пользователь вышел
                 document.getElementById('unauthorized').classList.remove('hidden');
                 document.getElementById('authorized').classList.add('hidden');
                 document.getElementById('message').innerHTML = '';
             }
         });
 
-        // Функция регистрации
+        // Регистрация
         function register() {
             const email = document.getElementById('regEmail').value.trim();
             const password = document.getElementById('regPassword').value.trim();
@@ -105,7 +92,7 @@
             }
             
             auth.createUserWithEmailAndPassword(email, password)
-                .then((userCredential) => {
+                .then(() => {
                     messageDiv.className = 'success';
                     messageDiv.textContent = 'Регистрация успешна! Выполняется вход...';
                     document.getElementById('regEmail').value = '';
@@ -123,14 +110,14 @@
                 });
         }
 
-        // Функция входа
+        // Вход
         function login() {
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
             const messageDiv = document.getElementById('message');
             
             auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
+                .then(() => {
                     messageDiv.className = 'success';
                     messageDiv.textContent = 'Вход выполнен успешно!';
                     document.getElementById('loginEmail').value = '';
@@ -148,7 +135,7 @@
                 });
         }
 
-        // Функция выхода
+        // Выход
         function logout() {
             auth.signOut().then(() => {
                 document.getElementById('message').className = 'success';
