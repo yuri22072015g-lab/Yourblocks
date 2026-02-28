@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yourblocks — вход и регистрация</title>
+    <title>Yourblocks — вход по нику</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
         .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -16,41 +16,38 @@
         h2 { margin-top: 0; }
         hr { margin: 20px 0; }
     </style>
-    <!-- Firebase SDK (совместимая версия) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <div class="container" id="app">
-        <!-- Формы для неавторизованных -->
         <div id="unauthorized">
             <h2>Добро пожаловать в Yourblocks!</h2>
             <div id="message"></div>
-            
+
             <h3>Вход</h3>
-            <input type="email" id="loginEmail" placeholder="Email" required>
+            <input type="text" id="loginNick" placeholder="Ваш ник" required>
             <input type="password" id="loginPassword" placeholder="Пароль" required>
             <button onclick="login()">Войти</button>
 
             <hr>
 
             <h3>Регистрация</h3>
-            <input type="email" id="regEmail" placeholder="Email" required>
+            <input type="text" id="regNick" placeholder="Придумайте ник" required>
             <input type="password" id="regPassword" placeholder="Пароль (минимум 6 символов)" required>
             <button onclick="register()">Зарегистрироваться</button>
         </div>
 
-        <!-- Профиль авторизованного пользователя -->
         <div id="authorized" class="hidden">
             <h2>Личный кабинет</h2>
-            <p>Вы вошли как: <strong><span id="userEmail"></span></strong></p>
+            <p>Вы вошли как: <strong><span id="userNick"></span></strong></p>
             <p><strong>Ваш UID:</strong> <span id="userUid"></span></p>
             <button onclick="logout()" style="background: #dc3545;">Выйти</button>
         </div>
     </div>
 
     <script>
-        // 🔥 ВАШ ОБЪЕКТ firebaseConfig (данные из консоли)
+        // 🔥 Ваши данные Firebase (из консоли)
         const firebaseConfig = {
             apiKey: "AIzaSyCMgDxuPbye5rpZcS7JAHD_6PEDbAc3ZdU",
             authDomain: "yourblocks-ccdb7.firebaseapp.com",
@@ -61,16 +58,28 @@
             measurementId: "G-JSWF0QVSJ9"
         };
 
-        // Инициализация Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
 
-        // Отслеживание состояния аутентификации
+        // Домен для формирования email (можете заменить на любой, например "yourblocks.com")
+        const EMAIL_DOMAIN = "yourblocks-ccdb7.firebaseapp.com"; // или "yourblocks.com"
+
+        // Функция преобразования ника в email
+        function nickToEmail(nick) {
+            // Удаляем пробелы и приводим к нижнему регистру для безопасности
+            const cleanNick = nick.trim().toLowerCase().replace(/\s+/g, '');
+            return cleanNick + '@' + EMAIL_DOMAIN;
+        }
+
+        // Отслеживание состояния
         auth.onAuthStateChanged((user) => {
             if (user) {
+                // Извлекаем ник из email (часть до @)
+                const email = user.email;
+                const nick = email.split('@')[0];
                 document.getElementById('unauthorized').classList.add('hidden');
                 document.getElementById('authorized').classList.remove('hidden');
-                document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('userNick').textContent = nick;
                 document.getElementById('userUid').textContent = user.uid;
             } else {
                 document.getElementById('unauthorized').classList.remove('hidden');
@@ -81,29 +90,42 @@
 
         // Регистрация
         function register() {
-            const email = document.getElementById('regEmail').value.trim();
+            const nick = document.getElementById('regNick').value.trim();
             const password = document.getElementById('regPassword').value.trim();
             const messageDiv = document.getElementById('message');
-            
+
+            if (!nick) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = 'Введите ник';
+                return;
+            }
             if (password.length < 6) {
                 messageDiv.className = 'error';
                 messageDiv.textContent = 'Пароль должен быть не менее 6 символов';
                 return;
             }
-            
+            // Проверка на допустимые символы в нике (буквы, цифры, подчёркивание)
+            if (!/^[a-zA-Z0-9_]+$/.test(nick)) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = 'Ник может содержать только латинские буквы, цифры и подчёркивание';
+                return;
+            }
+
+            const email = nickToEmail(nick);
+
             auth.createUserWithEmailAndPassword(email, password)
                 .then(() => {
                     messageDiv.className = 'success';
                     messageDiv.textContent = 'Регистрация успешна! Выполняется вход...';
-                    document.getElementById('regEmail').value = '';
+                    document.getElementById('regNick').value = '';
                     document.getElementById('regPassword').value = '';
                 })
                 .catch((error) => {
                     messageDiv.className = 'error';
                     if (error.code === 'auth/email-already-in-use') {
-                        messageDiv.textContent = 'Этот email уже зарегистрирован';
+                        messageDiv.textContent = 'Этот ник уже занят';
                     } else if (error.code === 'auth/invalid-email') {
-                        messageDiv.textContent = 'Некорректный email';
+                        messageDiv.textContent = 'Некорректный ник (используйте латиницу)';
                     } else {
                         messageDiv.textContent = 'Ошибка: ' + error.message;
                     }
@@ -112,21 +134,29 @@
 
         // Вход
         function login() {
-            const email = document.getElementById('loginEmail').value.trim();
+            const nick = document.getElementById('loginNick').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
             const messageDiv = document.getElementById('message');
-            
+
+            if (!nick || !password) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = 'Заполните все поля';
+                return;
+            }
+
+            const email = nickToEmail(nick);
+
             auth.signInWithEmailAndPassword(email, password)
                 .then(() => {
                     messageDiv.className = 'success';
                     messageDiv.textContent = 'Вход выполнен успешно!';
-                    document.getElementById('loginEmail').value = '';
+                    document.getElementById('loginNick').value = '';
                     document.getElementById('loginPassword').value = '';
                 })
                 .catch((error) => {
                     messageDiv.className = 'error';
                     if (error.code === 'auth/user-not-found') {
-                        messageDiv.textContent = 'Пользователь не найден';
+                        messageDiv.textContent = 'Пользователь с таким ником не найден';
                     } else if (error.code === 'auth/wrong-password') {
                         messageDiv.textContent = 'Неверный пароль';
                     } else {
