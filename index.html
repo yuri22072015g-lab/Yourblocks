@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Parkour Game — Быстрая камера и никакого трения</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 10, 20, 0.75);
+            color: #fff;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 15px;
+            backdrop-filter: blur(4px);
+            border: 1px solid #444;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            pointer-events: none;
+            z-index: 100;
+        }
+        #ui span { color: #ffaa00; font-weight: bold; }
+        #speed-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            color: #0ff;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-family: monospace;
+            font-size: 16px;
+            border: 1px solid #0ff;
+            box-shadow: 0 0 10px rgba(0,255,255,0.3);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        ⚡ <span>WASD</span> — движение · <span>Пробел</span> — прыжок (кд 2 сек)<br>
+        🖱️ <span>ПКМ (быстро)</span> — вращение камеры · <span>Колёсико</span> — зум<br>
+        ❌ <span style="color:#ff5555">Красные блоки = смерть</span> (мгновенно)<br>
+        🟦 По центру безопасная дорожка
+    </div>
+    <div id="speed-indicator">
+        ⚡ Скорость: нормальная (трение убрано)
+    </div>
+
+    <!-- Подключаем библиотеки -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+
+    <script>
+        (function() {
+            // ==================== ИНИЦИАЛИЗАЦИЯ СЦЕНЫ ====================
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // ==================== КАМЕРА ====================
+            const yawObject = new THREE.Object3D();
+            const pitchObject = new THREE.Object3D();
+            yawObject.add(pitchObject);
+            pitchObject.add(camera);
+            scene.add(yawObject);
+
+            let cameraDistance = 7;
+            const minDistance = 3;
+            const maxDistance = 15;
+            camera.position.set(0, 2.5, cameraDistance);
+
+            document.addEventListener("wheel", (e) => {
+                cameraDistance += e.deltaY * 0.01;
+                cameraDistance = Math.max(minDistance, Math.min(maxDistance, cameraDistance));
+            });
+
+            // ==================== ОСВЕЩЕНИЕ ====================
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(20, 30, 10);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            // ==================== ФИЗИКА ====================
+            const world = new CANNON.World();
+            world.gravity.set(0, -9.82, 0);
+
+            // Материалы
+            const groundMaterial = new CANNON.Material("groundMaterial");
+            const playerMaterial = new CANNON.Material("playerMaterial");
+            
+            // ВАЖНО: Убираем трение полностью!
+            const contactMaterial = new CANNON.ContactMaterial(playerMaterial, groundMaterial, {
+                friction: 0.0,        // Абсолютно никакого трения
+                restitution: 0.0,
+                contactEquationStiffness: 1e7, // Жёсткость контакта
+                contactEquationRelaxation: 3
+            });
+            world.addContactMaterial(contactMaterial);
+            world.defaultContactMaterial = contactMaterial;
+
+            // ==================== ГРУППЫ ДЛЯ СМЕРТИ ====================
+            const deathBlocks = [];
+
+            // ==================== СОЗДАНИЕ УРОВНЯ ====================
+            
+            // Земля под всем
+            const groundMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(30, 2, 30),
+                new THREE.MeshStandardMaterial({ color: 0x3a4a5a })
+            );
+            groundMesh.position.set(0, -1, 10);
+            groundMesh.receiveShadow = true;
+            scene.add(groundMesh);
+
+            const groundBody = new CANNON.Body({ mass: 0, material: groundMaterial });
+            groundBody.addShape(new CANNON.Box(new CANNON.Vec3(15, 1, 15)));
+            groundBody.position.copy(groundMesh.position);
+            world.addBody(groundBody);
+
+            // Уровень 1: цветные платформы
+            for (let i = 0; i < 15; i++) {
+                const platformMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(8, 1, 8),
+                    new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(i / 15, 0.8, 0.5) })
+                );
+                platformMesh.position.set(0, 2, -i * 10);
+                platformMesh.castShadow = true;
+                platformMesh.receiveShadow = true;
+                scene.add(platformMesh);
+
+                const platformBody = new CANNON.Body({ mass: 0, material: groundMaterial });
+                platformBody.addShape(new CANNON.Box(new CANNON.Vec3(4, 0.5, 4)));
+                platformBody.position.copy(platformMesh.position);
+                world.addBody(platformBody);
+            }
+
+            // Уровень 2: серые платформы с красными блоками
+            const startZ = -160;
+            for (let i = 0; i < 20; i++) {
+                const platformMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(8, 1, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x888888 })
+                );
+                platformMesh.position.set(0, 2, startZ - i * 10);
+                platformMesh.castShadow = true;
+                platformMesh.receiveShadow = true;
+                scene.add(platformMesh);
+
+                const platformBody = new CANNON.Body({ mass: 0, material: groundMaterial });
+                platformBody.addShape(new CANNON.Box(new CANNON.Vec3(4, 0.5, 4)));
+                platformBody.position.copy(platformMesh.position);
+                world.addBody(platformBody);
+
+                for (let x = -3; x <= 3; x += 3) {
+                    if (x === 0) continue;
+                    if (Math.random() > 0.35) {
+                        const deathMesh = new THREE.Mesh(
+                            new THREE.BoxGeometry(2, 1, 2),
+                            new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x330000 })
+                        );
+                        deathMesh.position.set(x, 3, startZ - i * 10);
+                        deathMesh.castShadow = true;
+                        deathMesh.receiveShadow = true;
+                        scene.add(deathMesh);
+
+                        const deathBody = new CANNON.Body({ 
+                            mass: 0,
+                            material: groundMaterial,
+                            collisionResponse: false // Не влияет на физику
+                        });
+                        deathBody.addShape(new CANNON.Box(new CANNON.Vec3(1, 0.5, 1)));
+                        deathBody.position.copy(deathMesh.position);
+                        world.addBody(deathBody);
+                        
+                        deathBlocks.push(deathBody);
+                    }
+                }
+            }
+
+            // ==================== ИГРОК ====================
+            const playerBody = new CANNON.Body({
+                mass: 5,
+                material: playerMaterial,
+                linearDamping: 0.0,        // Убираем damping полностью - теперь нет замедления!
+                angularDamping: 0.0,
+                fixedRotation: true,
+                collisionResponse: true
+            });
+            playerBody.addShape(new CANNON.Sphere(0.9));
+            playerBody.position.set(0, 8, 5);
+            world.addBody(playerBody);
+
+            const spawnPosition = new CANNON.Vec3(0, 8, 5);
+
+            // Визуальная модель
+            const playerGroup = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3399ff });
+            const limbMat = new THREE.MeshStandardMaterial({ color: 0x2255aa });
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffccaa });
+
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.8), bodyMat);
+            torso.position.y = 1.6;
+            torso.castShadow = true;
+            playerGroup.add(torso);
+
+            const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), headMat);
+            head.position.y = 3;
+            head.castShadow = true;
+            playerGroup.add(head);
+
+            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), limbMat);
+            leftLeg.position.set(-0.4, 0.2, 0);
+            leftLeg.castShadow = true;
+            playerGroup.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), limbMat);
+            rightLeg.position.set(0.4, 0.2, 0);
+            rightLeg.castShadow = true;
+            playerGroup.add(rightLeg);
+
+            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), limbMat);
+            leftArm.position.set(-0.8, 1.8, 0);
+            leftArm.castShadow = true;
+            playerGroup.add(leftArm);
+
+            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), limbMat);
+            rightArm.position.set(0.8, 1.8, 0);
+            rightArm.castShadow = true;
+            playerGroup.add(rightArm);
+
+            scene.add(playerGroup);
+
+            // ==================== УПРАВЛЕНИЕ ====================
+            const keys = {};
+            document.addEventListener("keydown", (e) => keys[e.code] = true);
+            document.addEventListener("keyup", (e) => keys[e.code] = false);
+            document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+            let mouseDown = false;
+            // УВЕЛИЧИВАЕМ ЧУВСТВИТЕЛЬНОСТЬ КАМЕРЫ В 3 РАЗА
+            const cameraSensitivity = 0.006; // Было 0.002, стало 0.006
+
+            document.addEventListener("mousedown", (e) => {
+                if (e.button === 2) mouseDown = true;
+            });
+            document.addEventListener("mouseup", (e) => {
+                if (e.button === 2) mouseDown = false;
+            });
+            document.addEventListener("mousemove", (e) => {
+                if (!mouseDown) return;
+                yawObject.rotation.y -= e.movementX * cameraSensitivity;
+                pitchObject.rotation.x -= e.movementY * cameraSensitivity;
+                pitchObject.rotation.x = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, pitchObject.rotation.x));
+            });
+
+            // ==================== ПРЫЖОК ====================
+            let jumpCooldown = 2.0;
+            let lastJumpTime = -Infinity;
+
+            function respawn() {
+                playerBody.position.copy(spawnPosition);
+                playerBody.velocity.set(0, 0, 0);
+                playerBody.angularVelocity.set(0, 0, 0);
+            }
+
+            // ==================== ИГРОВОЙ ЦИКЛ ====================
+            const clock = new THREE.Clock();
+            let walkTime = 0;
+            const deathHeight = -20;
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                const delta = Math.min(clock.getDelta(), 0.1);
+                const elapsedTime = performance.now() / 1000;
+
+                world.step(1 / 60, delta, 3);
+
+                // ========== ПРОВЕРКА НА СМЕРТЬ ==========
+                let dead = false;
+
+                if (playerBody.position.y < deathHeight) {
+                    dead = true;
+                }
+
+                if (!dead) {
+                    const playerPos = playerBody.position;
+                    const playerRadius = 0.9;
+
+                    for (let block of deathBlocks) {
+                        const blockPos = block.position;
+                        const halfExtents = new CANNON.Vec3(1, 0.5, 1);
+                        
+                        const dx = playerPos.x - blockPos.x;
+                        const dy = playerPos.y - blockPos.y;
+                        const dz = playerPos.z - blockPos.z;
+
+                        const closestX = Math.max(-halfExtents.x, Math.min(halfExtents.x, dx));
+                        const closestY = Math.max(-halfExtents.y, Math.min(halfExtents.y, dy));
+                        const closestZ = Math.max(-halfExtents.z, Math.min(halfExtents.z, dz));
+
+                        const distX = dx - closestX;
+                        const distY = dy - closestY;
+                        const distZ = dz - closestZ;
+
+                        const distSq = distX*distX + distY*distY + distZ*distZ;
+                        
+                        if (distSq < playerRadius * playerRadius) {
+                            dead = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (dead) {
+                    respawn();
+                }
+
+                // ========== УПРАВЛЕНИЕ ДВИЖЕНИЕМ ==========
+                if (!dead) {
+                    const moveSpeed = 12; // Увеличил скорость для более динамичной игры
+
+                    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+                    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
+
+                    // Напрямую задаём скорость, без демпфирования
+                    let moveX = 0, moveZ = 0;
+                    
+                    if (keys["KeyW"]) {
+                        moveX += forward.x;
+                        moveZ += forward.z;
+                    }
+                    if (keys["KeyS"]) {
+                        moveX -= forward.x;
+                        moveZ -= forward.z;
+                    }
+                    if (keys["KeyA"]) {
+                        moveX -= right.x;
+                        moveZ -= right.z;
+                    }
+                    if (keys["KeyD"]) {
+                        moveX += right.x;
+                        moveZ += right.z;
+                    }
+
+                    // Нормализуем диагональную скорость
+                    if (moveX !== 0 || moveZ !== 0) {
+                        const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
+                        moveX /= len;
+                        moveZ /= len;
+                    }
+
+                    // Применяем скорость (полный контроль, никакого трения)
+                    playerBody.velocity.x = moveX * moveSpeed;
+                    playerBody.velocity.z = moveZ * moveSpeed;
+
+                    // Прыжок
+                    if (keys["Space"]) {
+                        // Простая проверка: если стоим на земле (скорость вниз отсутствует)
+                        if (Math.abs(playerBody.velocity.y) < 0.1) {
+                            const currentTime = elapsedTime;
+                            if (currentTime - lastJumpTime >= jumpCooldown) {
+                                playerBody.velocity.y = 10;
+                                lastJumpTime = currentTime;
+                            }
+                        }
+                    }
+                }
+
+                // ========== АНИМАЦИЯ ==========
+                const moving = Math.abs(playerBody.velocity.x) > 0.1 || Math.abs(playerBody.velocity.z) > 0.1;
+                if (moving) {
+                    walkTime += delta * 12;
+                    const swing = Math.sin(walkTime) * 0.7;
+                    leftLeg.rotation.x = swing;
+                    rightLeg.rotation.x = -swing;
+                    leftArm.rotation.x = -swing;
+                    rightArm.rotation.x = swing;
+                } else {
+                    leftLeg.rotation.x = 0;
+                    rightLeg.rotation.x = 0;
+                    leftArm.rotation.x = 0;
+                    rightArm.rotation.x = 0;
+                }
+
+                // ========== КАМЕРА ==========
+                const firstPerson = cameraDistance <= minDistance + 0.2;
+                if (firstPerson) {
+                    camera.position.set(0, 3, 0);
+                    playerGroup.visible = false;
+                } else {
+                    camera.position.set(0, 2.5, cameraDistance);
+                    playerGroup.visible = true;
+                }
+
+                playerGroup.position.copy(playerBody.position);
+                playerGroup.rotation.y = yawObject.rotation.y;
+                yawObject.position.copy(playerBody.position);
+
+                renderer.render(scene, camera);
+            }
+
+            animate();
+
+            window.addEventListener("resize", () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+        })();
+    </script>
+</body>
+</html>
