@@ -3,32 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Messenger MVP Demo</title>
+    <title>Messenger MVP (один HTML)</title>
     <style>
-        * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+        * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; }
         body { background: #0a0f1e; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .app { width: 380px; background: #1e2a3a; border-radius: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); overflow: hidden; color: #e6e9ff; }
+        .app { width: 380px; background: #1e2a3a; border-radius: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); overflow: hidden; color: #e6e9ff; position: relative; }
         .screen { padding: 24px; display: none; }
         .screen.active { display: block; }
         h2 { margin: 0 0 20px; font-weight: 400; color: #a0b3d9; }
-        input, button { width: 100%; padding: 14px; border: none; border-radius: 14px; margin: 8px 0; font-size: 16px; }
-        input { background: #2c3a4b; color: white; }
+        input, button, select { width: 100%; padding: 14px; border: none; border-radius: 14px; margin: 8px 0; font-size: 16px; outline: none; }
+        input, select { background: #2c3a4b; color: white; }
         input::placeholder { color: #7a8ba8; }
         button { background: #2b6c9e; color: white; font-weight: 600; cursor: pointer; transition: 0.2s; }
         button:hover { background: #1e5a8a; }
         button.danger { background: #8a3f3f; }
         button.danger:hover { background: #6f2f2f; }
         .phone-input { display: flex; gap: 8px; }
-        .phone-input input { flex: 1; }
-        .phone-input select { width: 90px; background: #2c3a4b; color: white; border: none; border-radius: 14px; padding: 14px; }
+        .phone-input select { width: 90px; }
         .code-input { display: flex; gap: 8px; }
         .code-input input { flex: 1; text-align: center; letter-spacing: 4px; font-size: 20px; }
         .row { display: flex; gap: 12px; align-items: center; }
         .contact-list { list-style: none; padding: 0; margin: 20px 0; }
         .contact-list li { padding: 15px; background: #263647; border-radius: 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: 0.2s; }
         .contact-list li:hover { background: #2e4053; }
-        .contact-list .online { width: 10px; height: 10px; background: #3acb6e; border-radius: 50%; }
-        .contact-list .offline { width: 10px; height: 10px; background: #7f8fa0; border-radius: 50%; }
+        .online { width: 10px; height: 10px; background: #3acb6e; border-radius: 50%; }
+        .offline { width: 10px; height: 10px; background: #7f8fa0; border-radius: 50%; }
         .chat-header { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #35485b; margin-bottom: 16px; }
         .chat-header .back { font-size: 24px; cursor: pointer; }
         .messages { height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; padding-right: 4px; }
@@ -50,12 +49,11 @@
         .incoming-call { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e2a3a; padding: 20px; border-radius: 30px; display: none; gap: 20px; z-index: 2000; box-shadow: 0 10px 20px black; }
         .incoming-call.active { display: flex; }
         .incoming-avatar { width: 50px; height: 50px; background: #2b6c9e; border-radius: 25px; display: flex; align-items: center; justify-content: center; }
-        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #263647; padding: 12px 24px; border-radius: 40px; display: none; }
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #263647; padding: 12px 24px; border-radius: 40px; display: none; z-index: 3000; }
     </style>
 </head>
 <body>
 <div class="app" id="app">
-
     <!-- Экран регистрации (ввод номера) -->
     <div id="registerScreen" class="screen active">
         <h2>Регистрация</h2>
@@ -72,7 +70,7 @@
             <input type="text" id="smsCode" placeholder="6-значный код" maxlength="6">
         </div>
         <button id="verifyCodeBtn" disabled>Подтвердить</button>
-        <div style="margin-top: 20px; font-size: 12px; color: #7a8ba8;">*Код появится в консоли браузера (F12)</div>
+        <div style="margin-top: 20px; font-size: 12px; color: #7a8ba8;">*Код появится в уведомлении</div>
     </div>
 
     <!-- Экран списка контактов -->
@@ -130,17 +128,17 @@
 
 <script>
     (function() {
-        // ======================== Эмуляция базы данных (localStorage) ========================
+        // ======================== Эмуляция серверного хранилища (localStorage) ========================
         const STORAGE_KEYS = {
             users: 'messenger_users',
             currentUser: 'messenger_current_user',
             messages: 'messenger_messages',
-            calls: 'messenger_calls'
+            calls: 'messenger_calls',
+            verificationCodes: 'messenger_verification_codes'
         };
 
-        // Инициализация хранилищ
+        // Инициализация данных по умолчанию (два тестовых пользователя)
         if (!localStorage.getItem(STORAGE_KEYS.users)) {
-            // Создаём двух тестовых пользователей для демо
             const demoUsers = [
                 { id: '1', phone: '+79001234567', name: 'Анна', isOnline: false, lastSeen: new Date().toISOString() },
                 { id: '2', phone: '+79007654321', name: 'Иван', isOnline: false, lastSeen: new Date().toISOString() }
@@ -153,15 +151,15 @@
         if (!localStorage.getItem(STORAGE_KEYS.calls)) {
             localStorage.setItem(STORAGE_KEYS.calls, JSON.stringify([]));
         }
+        if (!localStorage.getItem(STORAGE_KEYS.verificationCodes)) {
+            localStorage.setItem(STORAGE_KEYS.verificationCodes, JSON.stringify({}));
+        }
 
-        // Временное хранилище для SMS-кодов (в памяти, не localStorage)
-        const smsCodes = new Map(); // ключ: номер телефона, значение: { code, expires }
-
-        // Текущий пользователь (будет загружен из localStorage при старте)
+        // Текущий пользователь (загружается из localStorage)
         let currentUser = null;
-        let currentContact = null; // контакт, с которым открыт чат
+        let currentContact = null;
 
-        // Элементы DOM
+        // DOM элементы
         const registerScreen = document.getElementById('registerScreen');
         const contactsScreen = document.getElementById('contactsScreen');
         const chatScreen = document.getElementById('chatScreen');
@@ -200,12 +198,11 @@
             active: false,
             withUserId: null,
             isMuted: false,
-            isIncoming: false,
-            callTimeout: null
+            isIncoming: false
         };
 
         // ======================== Вспомогательные функции ========================
-        function showToast(text, duration = 2000) {
+        function showToast(text, duration = 3000) {
             toastDiv.textContent = text;
             toastDiv.style.display = 'block';
             setTimeout(() => toastDiv.style.display = 'none', duration);
@@ -217,6 +214,8 @@
 
         function saveUsers(users) {
             localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
+            // Триггер для других вкладок
+            window.dispatchEvent(new Event('storage'));
         }
 
         function getMessages() {
@@ -225,17 +224,18 @@
 
         function saveMessages(messages) {
             localStorage.setItem(STORAGE_KEYS.messages, JSON.stringify(messages));
+            window.dispatchEvent(new Event('storage'));
         }
 
-        function getCalls() {
-            return JSON.parse(localStorage.getItem(STORAGE_KEYS.calls)) || [];
+        function getVerificationCodes() {
+            return JSON.parse(localStorage.getItem(STORAGE_KEYS.verificationCodes)) || {};
         }
 
-        function saveCalls(calls) {
-            localStorage.setItem(STORAGE_KEYS.calls, JSON.stringify(calls));
+        function saveVerificationCodes(codes) {
+            localStorage.setItem(STORAGE_KEYS.verificationCodes, JSON.stringify(codes));
         }
 
-        // Обновление статуса онлайн/офлайн (эмуляция: просто включаем онлайн для текущего)
+        // Обновление статуса онлайн
         function setUserOnline(userId, online) {
             const users = getUsers();
             const user = users.find(u => u.id === userId);
@@ -286,11 +286,14 @@
             // Генерация 6-значного кода
             const code = Math.floor(100000 + Math.random() * 900000).toString();
             const expires = Date.now() + 5 * 60 * 1000; // 5 минут
-            smsCodes.set(phone, { code, expires });
 
-            // Имитация отправки SMS (вывод в консоль)
-            console.log(`%c[SMS STUB] Код для ${phone}: ${code}`, 'background: #2b6c9e; color: white; padding: 4px;');
-            showToast(`Код отправлен (см. консоль): ${code}`, 4000);
+            // Сохраняем код в localStorage (имитация серверного хранилища)
+            const codes = getVerificationCodes();
+            codes[phone] = { code, expires };
+            saveVerificationCodes(codes);
+
+            // Имитация получения SMS: показываем код в тосте
+            showToast(`Ваш код: ${code}`, 6000);
 
             smsCodeInput.disabled = false;
             verifyCodeBtn.disabled = false;
@@ -300,14 +303,17 @@
         verifyCodeBtn.addEventListener('click', () => {
             const phone = countryCode.value + phoneInput.value.trim();
             const enteredCode = smsCodeInput.value.trim();
-            const record = smsCodes.get(phone);
+            const codes = getVerificationCodes();
+            const record = codes[phone];
+
             if (!record) {
                 showToast('Сначала запросите код');
                 return;
             }
             if (Date.now() > record.expires) {
                 showToast('Код истёк, запросите новый');
-                smsCodes.delete(phone);
+                delete codes[phone];
+                saveVerificationCodes(codes);
                 return;
             }
             if (enteredCode !== record.code) {
@@ -316,11 +322,14 @@
             }
 
             // Код верный — создаём или получаем пользователя
+            delete codes[phone];
+            saveVerificationCodes(codes);
+
             const users = getUsers();
             let user = users.find(u => u.phone === phone);
             if (!user) {
                 // Новый пользователь
-                const newId = Date.now().toString() + Math.random().toString(36);
+                const newId = 'user_' + Date.now() + Math.random().toString(36);
                 user = {
                     id: newId,
                     phone: phone,
@@ -335,16 +344,13 @@
             showToast('Добро пожаловать!');
             switchScreen('contacts');
             renderContactsScreen();
-
-            // Очищаем использованный код
-            smsCodes.delete(phone);
         });
 
         // ======================== Контакты ========================
         function renderContactsScreen() {
             if (!currentUser) return;
             currentUserPhoneSpan.textContent = currentUser.phone;
-            const users = getUsers().filter(u => u.id !== currentUser.id); // все, кроме себя
+            const users = getUsers().filter(u => u.id !== currentUser.id);
             contactList.innerHTML = '';
             users.forEach(user => {
                 const li = document.createElement('li');
@@ -400,21 +406,12 @@
                 messagesContainer.appendChild(div);
             });
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-            // Если сообщения от собеседника не прочитаны, отмечаем их как прочитанные (эмуляция)
-            if (messages.length) {
-                const unread = messages.filter(m => m.senderId === currentContact.id && m.status !== 'read');
-                if (unread.length) {
-                    unread.forEach(m => m.status = 'read');
-                    saveMessages(getMessages()); // сохраняем обновления
-                }
-            }
         }
 
         function getStatusIcons(status) {
-            if (status === 'sent') return '✓';
-            if (status === 'delivered') return '✓✓';
-            if (status === 'read') return '✓✓' + ' синие'; // для демо
+            if (status === 'sent') return ' ✓';
+            if (status === 'delivered') return ' ✓✓';
+            if (status === 'read') return ' ✓✓✓';
             return '';
         }
 
@@ -428,7 +425,7 @@
             if (!text || !currentUser || !currentContact) return;
 
             const newMsg = {
-                id: Date.now() + Math.random(),
+                id: 'msg_' + Date.now() + Math.random(),
                 senderId: currentUser.id,
                 receiverId: currentContact.id,
                 text: text,
@@ -441,10 +438,10 @@
             renderMessages();
             messageInput.value = '';
 
-            // Эмуляция доставки и прочтения через 2 секунды (если собеседник онлайн)
+            // Эмуляция доставки и прочтения через таймеры (если собеседник онлайн)
             setTimeout(() => {
                 const msg = messages.find(m => m.id === newMsg.id);
-                if (msg) {
+                if (msg && msg.status === 'sent') {
                     msg.status = 'delivered';
                     saveMessages(messages);
                     renderMessages();
@@ -452,7 +449,7 @@
             }, 2000);
             setTimeout(() => {
                 const msg = messages.find(m => m.id === newMsg.id);
-                if (msg) {
+                if (msg && msg.status === 'delivered') {
                     msg.status = 'read';
                     saveMessages(messages);
                     renderMessages();
@@ -460,7 +457,50 @@
             }, 4000);
         }
 
-        // ======================== Звонки (эмуляция) ========================
+        // Слушаем изменения в localStorage для обновления сообщений в реальном времени
+        window.addEventListener('storage', (e) => {
+            if (e.key === STORAGE_KEYS.messages) {
+                if (currentContact && chatScreen.classList.contains('active')) {
+                    renderMessages();
+                }
+            }
+            if (e.key === STORAGE_KEYS.users) {
+                if (currentContact) {
+                    updateContactStatus(currentContact);
+                }
+                if (contactsScreen.classList.contains('active')) {
+                    renderContactsScreen();
+                }
+            }
+            // Обработка звонков (будет ниже)
+            if (e.key === 'call_incoming') {
+                // Данные о входящем звонке передаются через отдельный ключ
+                const callData = JSON.parse(e.newValue);
+                if (callData && callData.calleeId === currentUser?.id) {
+                    // Показываем уведомление о входящем звонке
+                    incomingCallerName.textContent = callData.callerName;
+                    incomingCallDiv.classList.add('active');
+                    callState.isIncoming = true;
+                    callState.withUserId = callData.callerId;
+                }
+            }
+            if (e.key === 'call_answer') {
+                const answer = JSON.parse(e.newValue);
+                if (answer.callerId === currentUser?.id && callScreen.classList.contains('active')) {
+                    callStatus.textContent = 'Разговор';
+                }
+            }
+            if (e.key === 'call_end') {
+                const end = JSON.parse(e.newValue);
+                if (end.targetId === currentUser?.id) {
+                    callScreen.classList.remove('active');
+                    incomingCallDiv.classList.remove('active');
+                    showToast('Звонок завершён');
+                }
+            }
+        });
+
+        // ======================== Звонки (эмуляция через localStorage) ========================
         callButton.addEventListener('click', initiateCall);
 
         function initiateCall() {
@@ -472,24 +512,22 @@
             callStatus.textContent = 'Звоним...';
             callAvatar.textContent = currentContact.name[0] || '👤';
 
-            // Эмуляция ответа через 3 секунды
-            callState.callTimeout = setTimeout(() => {
+            // Отправляем сигнал о входящем звонке другому пользователю через localStorage
+            const callData = {
+                callerId: currentUser.id,
+                callerName: currentUser.name,
+                calleeId: currentContact.id,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('call_incoming', JSON.stringify(callData));
+            // Через некоторое время эмулируем ответ (для демо)
+            setTimeout(() => {
                 if (callState.active && callState.withUserId === currentContact.id) {
-                    // Собеседник "принял" звонок
+                    // Проверяем, не был ли звонок отклонён
+                    // Для простоты считаем, что через 3 секунды звонок автоматически принимается
                     callStatus.textContent = 'Разговор';
-                    // Показать уведомление о входящем для другого пользователя (имитация)
-                    simulateIncomingCall(currentContact);
                 }
             }, 3000);
-        }
-
-        function simulateIncomingCall(contact) {
-            // Это эмуляция: показываем уведомление о входящем звонке от контакта
-            // В реальности это пришло бы с сервера. Для демо покажем сразу.
-            incomingCallerName.textContent = contact.name;
-            incomingCallDiv.classList.add('active');
-            callState.isIncoming = true;
-            callState.withUserId = contact.id;
         }
 
         acceptCallBtn.addEventListener('click', () => {
@@ -499,21 +537,37 @@
             callState.active = true;
             callState.isIncoming = false;
             callAvatar.textContent = currentContact?.name[0] || '👤';
-            // Остановить таймер, если он был
-            if (callState.callTimeout) clearTimeout(callState.callTimeout);
+
+            // Отправляем ответ звонящему
+            const answerData = {
+                callerId: callState.withUserId,
+                calleeId: currentUser.id,
+                accepted: true
+            };
+            localStorage.setItem('call_answer', JSON.stringify(answerData));
         });
 
         declineCallBtn.addEventListener('click', () => {
             incomingCallDiv.classList.remove('active');
             callState.active = false;
             showToast('Звонок отклонён');
+            // Уведомляем звонящего об отклонении
+            const declineData = {
+                callerId: callState.withUserId,
+                calleeId: currentUser.id,
+                declined: true
+            };
+            localStorage.setItem('call_decline', JSON.stringify(declineData));
         });
 
         endCallBtn.addEventListener('click', endCall);
         function endCall() {
             callScreen.classList.remove('active');
             incomingCallDiv.classList.remove('active');
-            if (callState.callTimeout) clearTimeout(callState.callTimeout);
+            if (callState.withUserId) {
+                const endData = { targetId: callState.withUserId };
+                localStorage.setItem('call_end', JSON.stringify(endData));
+            }
             callState.active = false;
             showToast('Звонок завершён');
         }
@@ -553,12 +607,12 @@
             }
         }, 2000);
 
-        // Периодическое обновление списка сообщений (для имитации входящих)
+        // Периодическое обновление сообщений
         setInterval(() => {
             if (currentContact && chatScreen.classList.contains('active')) {
                 renderMessages();
             }
-        }, 3000);
+        }, 1000);
 
         // Старт
         loadCurrentUser();
