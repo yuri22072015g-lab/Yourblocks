@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Messenger MVP (добавление в друзья)</title>
+    <title>Messenger MVP (поиск и добавление контактов)</title>
     <style>
         * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; }
         body { background: #0a0f1e; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
@@ -20,14 +20,16 @@
         button.danger:hover { background: #6f2f2f; }
         button.success { background: #3acb6e; }
         button.success:hover { background: #2eaa58; }
+        button.small { padding: 8px 12px; font-size: 14px; width: auto; }
         .phone-input { display: flex; gap: 8px; }
         .phone-input select { width: 90px; }
         .code-input { display: flex; gap: 8px; }
         .code-input input { flex: 1; text-align: center; letter-spacing: 4px; font-size: 20px; }
         .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-        .contact-list { list-style: none; padding: 0; margin: 20px 0; }
-        .contact-list li { padding: 15px; background: #263647; border-radius: 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: 0.2s; }
-        .contact-list li:hover { background: #2e4053; }
+        .contact-list { list-style: none; padding: 0; margin: 20px 0; max-height: 400px; overflow-y: auto; }
+        .contact-list li { padding: 15px; background: #263647; border-radius: 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; }
+        .contact-list li .info { flex: 1; }
+        .contact-list li .actions { display: flex; gap: 8px; }
         .online { width: 10px; height: 10px; background: #3acb6e; border-radius: 50%; }
         .offline { width: 10px; height: 10px; background: #7f8fa0; border-radius: 50%; }
         .chat-header { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #35485b; margin-bottom: 16px; }
@@ -52,9 +54,8 @@
         .incoming-call.active { display: flex; }
         .incoming-avatar { width: 50px; height: 50px; background: #2b6c9e; border-radius: 25px; display: flex; align-items: center; justify-content: center; }
         .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #263647; padding: 12px 24px; border-radius: 40px; display: none; z-index: 3000; }
-        .add-contact { display: flex; gap: 8px; margin: 16px 0; }
-        .add-contact input { flex: 1; margin: 0; }
-        .add-contact button { width: auto; }
+        .search-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .search-header input { flex: 1; margin: 0; }
     </style>
 </head>
 <body>
@@ -85,16 +86,24 @@
             <span id="currentUserPhone" style="background: #2c3a4b; padding: 6px 12px; border-radius: 30px;"></span>
         </div>
 
-        <!-- Добавление контакта по номеру -->
-        <div class="add-contact">
-            <input type="text" id="addContactPhone" placeholder="Номер телефона">
-            <button id="addContactBtn" class="success">➕ Добавить</button>
-        </div>
+        <!-- Кнопка перехода к поиску новых контактов -->
+        <button id="showSearchBtn" class="success" style="margin-bottom: 16px;">🔍 Найти людей</button>
 
         <ul class="contact-list" id="contactList">
-            <!-- динамически через js -->
+            <!-- список контактов -->
         </ul>
         <button id="logoutBtn">Выйти</button>
+    </div>
+
+    <!-- Экран поиска пользователей для добавления в контакты -->
+    <div id="searchScreen" class="screen">
+        <div class="search-header">
+            <span class="back" id="backToContactsFromSearch" style="font-size: 24px; cursor: pointer;">←</span>
+            <input type="text" id="searchInput" placeholder="Имя или номер...">
+        </div>
+        <ul class="contact-list" id="searchResultsList">
+            <!-- результаты поиска -->
+        </ul>
     </div>
 
     <!-- Экран чата с выбранным контактом -->
@@ -149,9 +158,9 @@
             verificationCodes: 'messenger_verification_codes'
         };
 
-        // Инициализация данных: больше нет предустановленных пользователей
+        // Инициализация данных
         if (!localStorage.getItem(STORAGE_KEYS.users)) {
-            localStorage.setItem(STORAGE_KEYS.users, JSON.stringify([])); // пустой массив
+            localStorage.setItem(STORAGE_KEYS.users, JSON.stringify([]));
         }
         if (!localStorage.getItem(STORAGE_KEYS.messages)) {
             localStorage.setItem(STORAGE_KEYS.messages, JSON.stringify([]));
@@ -163,13 +172,14 @@
             localStorage.setItem(STORAGE_KEYS.verificationCodes, JSON.stringify({}));
         }
 
-        // Текущий пользователь (загружается из localStorage)
+        // Текущий пользователь
         let currentUser = null;
         let currentContact = null;
 
         // DOM элементы
         const registerScreen = document.getElementById('registerScreen');
         const contactsScreen = document.getElementById('contactsScreen');
+        const searchScreen = document.getElementById('searchScreen');
         const chatScreen = document.getElementById('chatScreen');
         const callScreen = document.getElementById('callScreen');
         const incomingCallDiv = document.getElementById('incomingCall');
@@ -184,8 +194,10 @@
         const currentUserPhoneSpan = document.getElementById('currentUserPhone');
         const contactList = document.getElementById('contactList');
         const logoutBtn = document.getElementById('logoutBtn');
-        const addContactPhone = document.getElementById('addContactPhone');
-        const addContactBtn = document.getElementById('addContactBtn');
+        const showSearchBtn = document.getElementById('showSearchBtn');
+        const backToContactsFromSearch = document.getElementById('backToContactsFromSearch');
+        const searchInput = document.getElementById('searchInput');
+        const searchResultsList = document.getElementById('searchResultsList');
 
         const backToContacts = document.getElementById('backToContacts');
         const chatContactName = document.getElementById('chatContactName');
@@ -224,7 +236,7 @@
 
         function saveUsers(users) {
             localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
-            window.dispatchEvent(new Event('storage')); // для синхронизации между вкладками
+            window.dispatchEvent(new Event('storage'));
         }
 
         function getMessages() {
@@ -244,7 +256,6 @@
             localStorage.setItem(STORAGE_KEYS.verificationCodes, JSON.stringify(codes));
         }
 
-        // Обновление статуса онлайн
         function setUserOnline(userId, online) {
             const users = getUsers();
             const user = users.find(u => u.id === userId);
@@ -255,7 +266,6 @@
             }
         }
 
-        // Загрузить текущего пользователя из localStorage
         function loadCurrentUser() {
             const saved = localStorage.getItem(STORAGE_KEYS.currentUser);
             if (saved) {
@@ -268,20 +278,20 @@
             }
         }
 
-        // Сохранить текущего пользователя
         function setCurrentUser(user) {
             currentUser = user;
             localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(user));
             setUserOnline(user.id, true);
         }
 
-        // Переключение экранов
         function switchScreen(screenName) {
             registerScreen.classList.remove('active');
             contactsScreen.classList.remove('active');
+            searchScreen.classList.remove('active');
             chatScreen.classList.remove('active');
             if (screenName === 'register') registerScreen.classList.add('active');
             if (screenName === 'contacts') contactsScreen.classList.add('active');
+            if (screenName === 'search') searchScreen.classList.add('active');
             if (screenName === 'chat') chatScreen.classList.add('active');
         }
 
@@ -340,7 +350,7 @@
                     name: 'Пользователь ' + phone.slice(-4),
                     isOnline: true,
                     lastSeen: new Date().toISOString(),
-                    contacts: [] // список id друзей
+                    contacts: []
                 };
                 users.push(user);
                 saveUsers(users);
@@ -351,47 +361,11 @@
             renderContactsScreen();
         });
 
-        // ======================== Добавление контакта ========================
-        addContactBtn.addEventListener('click', () => {
-            if (!currentUser) return;
-            const phone = addContactPhone.value.trim();
-            if (!phone) {
-                showToast('Введите номер');
-                return;
-            }
-            const users = getUsers();
-            const contactUser = users.find(u => u.phone === phone);
-            if (!contactUser) {
-                showToast('Пользователь с таким номером не найден');
-                return;
-            }
-            if (contactUser.id === currentUser.id) {
-                showToast('Нельзя добавить самого себя');
-                return;
-            }
-            // Проверяем, есть ли уже в контактах
-            if (currentUser.contacts.includes(contactUser.id)) {
-                showToast('Этот пользователь уже в контактах');
-                return;
-            }
-            // Добавляем id в контакты текущего пользователя
-            currentUser.contacts.push(contactUser.id);
-            // Обновляем пользователя в общем списке
-            const updatedUsers = users.map(u => u.id === currentUser.id ? currentUser : u);
-            saveUsers(updatedUsers);
-            // Сохраняем текущего пользователя в localStorage
-            localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(currentUser));
-            renderContactsScreen();
-            addContactPhone.value = '';
-            showToast('Контакт добавлен');
-        });
-
         // ======================== Контакты ========================
         function renderContactsScreen() {
             if (!currentUser) return;
             currentUserPhoneSpan.textContent = currentUser.phone;
             const users = getUsers();
-            // Получаем полные данные контактов из списка users по id
             const contacts = users.filter(u => currentUser.contacts.includes(u.id));
             contactList.innerHTML = '';
             if (contacts.length === 0) {
@@ -401,7 +375,7 @@
                     const li = document.createElement('li');
                     li.innerHTML = `
                         <span class="${user.isOnline ? 'online' : 'offline'}"></span>
-                        <div style="flex:1;">
+                        <div class="info">
                             <strong>${user.name}</strong><br>
                             <small>${user.isOnline ? 'в сети' : 'был(а) ' + new Date(user.lastSeen).toLocaleString()}</small>
                         </div>
@@ -412,6 +386,85 @@
             }
         }
 
+        // ======================== Поиск и добавление контактов ========================
+        showSearchBtn.addEventListener('click', () => {
+            switchScreen('search');
+            renderSearchResults();
+        });
+
+        backToContactsFromSearch.addEventListener('click', () => {
+            switchScreen('contacts');
+            renderContactsScreen();
+        });
+
+        searchInput.addEventListener('input', () => {
+            renderSearchResults();
+        });
+
+        function renderSearchResults() {
+            if (!currentUser) return;
+            const users = getUsers();
+            const query = searchInput.value.trim().toLowerCase();
+            // Фильтруем: исключаем себя и уже добавленных в контакты? Можно показывать всех, но с разными кнопками.
+            let filtered = users.filter(u => u.id !== currentUser.id);
+            if (query) {
+                filtered = filtered.filter(u => 
+                    u.name.toLowerCase().includes(query) || 
+                    u.phone.includes(query)
+                );
+            }
+            searchResultsList.innerHTML = '';
+            if (filtered.length === 0) {
+                searchResultsList.innerHTML = '<li style="justify-content: center; background: transparent;">Ничего не найдено</li>';
+                return;
+            }
+            filtered.forEach(user => {
+                const isContact = currentUser.contacts.includes(user.id);
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="${user.isOnline ? 'online' : 'offline'}"></span>
+                    <div class="info">
+                        <strong>${user.name}</strong><br>
+                        <small>${user.phone}</small>
+                    </div>
+                    <div class="actions">
+                        ${isContact 
+                            ? '<button class="small" disabled style="background: #3a4a5a;">✓ В контактах</button>' 
+                            : '<button class="small success add-contact-btn" data-id="'+user.id+'">➕ Добавить</button>'}
+                    </div>
+                `;
+                // Добавляем обработчик на кнопку "Добавить"
+                const addBtn = li.querySelector('.add-contact-btn');
+                if (addBtn) {
+                    addBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        addContact(user.id);
+                    });
+                }
+                // Можно также добавить открытие чата при клике на элемент, но пока ограничимся добавлением.
+                searchResultsList.appendChild(li);
+            });
+        }
+
+        function addContact(userId) {
+            if (!currentUser) return;
+            const users = getUsers();
+            const userToAdd = users.find(u => u.id === userId);
+            if (!userToAdd) return;
+            if (currentUser.contacts.includes(userId)) {
+                showToast('Уже в контактах');
+                return;
+            }
+            currentUser.contacts.push(userId);
+            // Обновляем пользователя в общем списке
+            const updatedUsers = users.map(u => u.id === currentUser.id ? currentUser : u);
+            saveUsers(updatedUsers);
+            localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(currentUser));
+            renderSearchResults(); // обновить список поиска (кнопка изменится)
+            showToast('Контакт добавлен');
+        }
+
+        // ======================== Чат ========================
         function openChat(contact) {
             currentContact = contact;
             chatContactName.textContent = contact.name;
@@ -429,7 +482,6 @@
             }
         }
 
-        // ======================== Чат ========================
         function renderMessages() {
             if (!currentUser || !currentContact) return;
             const messages = getMessages().filter(m => 
@@ -484,7 +536,6 @@
             renderMessages();
             messageInput.value = '';
 
-            // Эмуляция доставки и прочтения
             setTimeout(() => {
                 const msg = messages.find(m => m.id === newMsg.id);
                 if (msg && msg.status === 'sent') {
@@ -503,56 +554,7 @@
             }, 4000);
         }
 
-        // Слушаем изменения в localStorage
-        window.addEventListener('storage', (e) => {
-            if (e.key === STORAGE_KEYS.messages) {
-                if (currentContact && chatScreen.classList.contains('active')) {
-                    renderMessages();
-                }
-            }
-            if (e.key === STORAGE_KEYS.users) {
-                // Обновляем текущего пользователя, если он изменился (например, статус онлайн)
-                const saved = localStorage.getItem(STORAGE_KEYS.currentUser);
-                if (saved) {
-                    const updatedCurrent = JSON.parse(saved);
-                    if (currentUser && updatedCurrent.id === currentUser.id) {
-                        currentUser = updatedCurrent;
-                    }
-                }
-                if (currentContact) {
-                    updateContactStatus(currentContact);
-                }
-                if (contactsScreen.classList.contains('active')) {
-                    renderContactsScreen();
-                }
-            }
-            // Обработка звонков (как в предыдущей версии)
-            if (e.key === 'call_incoming') {
-                const callData = JSON.parse(e.newValue);
-                if (callData && callData.calleeId === currentUser?.id) {
-                    incomingCallerName.textContent = callData.callerName;
-                    incomingCallDiv.classList.add('active');
-                    callState.isIncoming = true;
-                    callState.withUserId = callData.callerId;
-                }
-            }
-            if (e.key === 'call_answer') {
-                const answer = JSON.parse(e.newValue);
-                if (answer.callerId === currentUser?.id && callScreen.classList.contains('active')) {
-                    callStatus.textContent = 'Разговор';
-                }
-            }
-            if (e.key === 'call_end') {
-                const end = JSON.parse(e.newValue);
-                if (end.targetId === currentUser?.id) {
-                    callScreen.classList.remove('active');
-                    incomingCallDiv.classList.remove('active');
-                    showToast('Звонок завершён');
-                }
-            }
-        });
-
-        // ======================== Звонки ========================
+        // ======================== Звонки (без изменений) ========================
         callButton.addEventListener('click', initiateCall);
 
         function initiateCall() {
@@ -624,6 +626,56 @@
             muteMicrophoneBtn.textContent = callState.isMuted ? '🔇' : '🎤';
         });
 
+        // ======================== Слушатели storage ========================
+        window.addEventListener('storage', (e) => {
+            if (e.key === STORAGE_KEYS.messages) {
+                if (currentContact && chatScreen.classList.contains('active')) {
+                    renderMessages();
+                }
+            }
+            if (e.key === STORAGE_KEYS.users) {
+                const saved = localStorage.getItem(STORAGE_KEYS.currentUser);
+                if (saved) {
+                    const updatedCurrent = JSON.parse(saved);
+                    if (currentUser && updatedCurrent.id === currentUser.id) {
+                        currentUser = updatedCurrent;
+                    }
+                }
+                if (currentContact) {
+                    updateContactStatus(currentContact);
+                }
+                if (contactsScreen.classList.contains('active')) {
+                    renderContactsScreen();
+                }
+                if (searchScreen.classList.contains('active')) {
+                    renderSearchResults();
+                }
+            }
+            if (e.key === 'call_incoming') {
+                const callData = JSON.parse(e.newValue);
+                if (callData && callData.calleeId === currentUser?.id) {
+                    incomingCallerName.textContent = callData.callerName;
+                    incomingCallDiv.classList.add('active');
+                    callState.isIncoming = true;
+                    callState.withUserId = callData.callerId;
+                }
+            }
+            if (e.key === 'call_answer') {
+                const answer = JSON.parse(e.newValue);
+                if (answer.callerId === currentUser?.id && callScreen.classList.contains('active')) {
+                    callStatus.textContent = 'Разговор';
+                }
+            }
+            if (e.key === 'call_end') {
+                const end = JSON.parse(e.newValue);
+                if (end.targetId === currentUser?.id) {
+                    callScreen.classList.remove('active');
+                    incomingCallDiv.classList.remove('active');
+                    showToast('Звонок завершён');
+                }
+            }
+        });
+
         // ======================== Навигация ========================
         backToContacts.addEventListener('click', () => {
             switchScreen('contacts');
@@ -640,7 +692,7 @@
             }
         });
 
-        // Периодическое обновление статуса контакта в чате
+        // Периодическое обновление статуса
         setInterval(() => {
             if (currentContact) {
                 const users = getUsers();
@@ -653,7 +705,6 @@
             }
         }, 2000);
 
-        // Периодическое обновление сообщений
         setInterval(() => {
             if (currentContact && chatScreen.classList.contains('active')) {
                 renderMessages();
