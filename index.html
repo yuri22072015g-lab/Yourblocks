@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>Yourblocks — Облачные аккаунты</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Подключаем Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Подключаем Supabase с правильной загрузкой -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -139,6 +139,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            pointer-events: auto !important;
+            z-index: 3000;
         }
         .login-btn:disabled {
             opacity: 0.7;
@@ -159,6 +161,8 @@
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
+            pointer-events: auto !important;
+            z-index: 3000;
         }
         .guest-btn:hover {
             border-color: #4CAF50;
@@ -1107,9 +1111,11 @@
     <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
 
     <script>
-        // ==================== НАСТРОЙКИ SUPABASE ====================
+        // ==================== ИНИЦИАЛИЗАЦИЯ SUPABASE ====================
         const SUPABASE_URL = 'https://srsnjssuidupfzgdpemw.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_8eyyAwZ5mO8q3vY3csgkFQ_E9zSmIXE';
+        
+        // Создаем клиент Supabase
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
@@ -1124,7 +1130,7 @@
         // ==================== ФУНКЦИИ ДЛЯ РАБОТЫ С SUPABASE ====================
         async function hashPassword(password) {
             const encoder = new TextEncoder();
-            const data = encoder.encode(password + 'yourblocks_salt');
+            const data = encoder.encode(password + 'yourblocks_salt_2024');
             const hash = await crypto.subtle.digest('SHA-256', data);
             return Array.from(new Uint8Array(hash))
                 .map(b => b.toString(16).padStart(2, '0'))
@@ -1223,7 +1229,7 @@
                     .from('users')
                     .select('username')
                     .eq('username', username)
-                    .single();
+                    .maybeSingle();
 
                 if (existingUser) {
                     throw new Error('Пользователь уже существует');
@@ -1355,7 +1361,6 @@
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('login-screen').style.opacity = '1';
             
-            // Очищаем поля ввода
             document.getElementById('login-username').value = '';
             document.getElementById('login-password').value = '';
             document.getElementById('register-username').value = '';
@@ -1415,7 +1420,7 @@
             document.querySelector('.game-card-large').classList.add('selected');
         }
 
-        // ==================== МУЛЬТИПЛЕЕР (СОКРАЩЕН ДЛЯ ПРИМЕРА) ====================
+        // ==================== МУЛЬТИПЛЕЕР ====================
         let peer = null;
         let connections = new Map();
         let otherPlayers = new Map();
@@ -1552,6 +1557,7 @@
         let joystickActive = false;
         let joystickVector = { x: 0, y: 0 };
         let jumpButtonPressed = false;
+        let lastTouchX = 0, lastTouchY = 0;
 
         function isOnGround() {
             return localPlayerBody && Math.abs(localPlayerBody.velocity.y) < 0.1;
@@ -1668,7 +1674,7 @@
 
             deathBlocks = [];
 
-            // Создание уровня (упрощенно)
+            // Создание уровня
             const groundMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(80, 2, 80),
                 new THREE.MeshStandardMaterial({ color: 0x2a3a4a })
@@ -1722,13 +1728,11 @@
                 const delta = 0.016;
                 world.step(1 / 60, delta, 3);
 
-                // Проверка смерти
                 if (localPlayerBody.position.y < deathHeight) {
                     localPlayerBody.position.copy(spawnPosition);
                     localPlayerBody.velocity.set(0, 0, 0);
                 }
 
-                // Движение
                 const moveSpeed = 12;
                 let moveX = 0, moveZ = 0;
                 if (keys["KeyW"]) moveZ += 1;
@@ -1767,12 +1771,10 @@
                     document.getElementById('jump-button').classList.remove('active');
                 }
 
-                // Анимация
                 const moving = Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1;
                 if (moving) walkTime += delta * 12;
                 animatePlayer(localModel, walkTime, moving);
 
-                // Отправка позиции
                 if (connections.size > 0) {
                     const now = Date.now();
                     if (now - lastSendTime > 100) {
@@ -1789,14 +1791,12 @@
                     }
                 }
 
-                // Обновление позиций других игроков
                 otherPlayers.forEach((player) => {
                     if (player.model && player.targetPos) {
                         player.model.position.lerp(player.targetPos, 0.3);
                     }
                 });
 
-                // Камера
                 camera.position.set(0, 3, cameraDistance);
                 localModel.position.copy(localPlayerBody.position);
                 yawObject.position.copy(localPlayerBody.position);
@@ -1924,6 +1924,9 @@
                 if (gameContainer.classList.contains('active')) exitGame();
             }
         });
+
+        // Проверяем, что Supabase загрузился
+        console.log('Supabase доступен:', !!window.supabase);
     </script>
 </body>
 </html>
