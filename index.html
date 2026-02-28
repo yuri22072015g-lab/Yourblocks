@@ -5,7 +5,7 @@
     <title>Yourblocks — Надёжный мультиплеер</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* Стили (полностью из вашего исходного кода) – я их не менял */
+        /* Стили (полностью из вашего исходного кода) – они не менялись */
         * {
             margin: 0;
             padding: 0;
@@ -1108,14 +1108,15 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // ==================== ПЕРЕМЕННЫЕ ====================
-        let currentUser = null; // объект с данными из Firestore { username, level, games, colors, friends, ... }
+        // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+        let currentUser = null; // объект с данными из Firestore { uid, username, level, colors, ... }
         let playerColors = { // цвета по умолчанию
             head: '#ffccaa',
             body: '#3366ff',
             legs: '#2244aa',
             arms: '#2244aa'
         };
+        let sessionListener = null; // функция отписки от слушателя документа
 
         // Вспомогательная функция для преобразования ника в email
         function nickToEmail(nick) {
@@ -1143,7 +1144,6 @@
             try {
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
                 const user = userCredential.user;
-                // Загружаем данные из Firestore
                 const doc = await db.collection('users').doc(user.uid).get();
                 if (doc.exists) {
                     currentUser = { uid: user.uid, username: username, ...doc.data() };
@@ -1160,12 +1160,45 @@
                     };
                     await db.collection('users').doc(user.uid).set(currentUser);
                 }
-                // Применяем цвета
+                
+                // Генерируем уникальный идентификатор сессии
+                const sessionId = Math.random().toString(36).substring(2) + Date.now();
+                await db.collection('users').doc(user.uid).update({ sessionId });
+                currentUser.sessionId = sessionId;
+
+                // Устанавливаем слушатель на документ пользователя для контроля одновременного входа
+                if (sessionListener) sessionListener(); // отписываемся от старого, если есть
+                sessionListener = db.collection('users').doc(user.uid).onSnapshot((docSnapshot) => {
+                    if (docSnapshot.exists) {
+                        const data = docSnapshot.data();
+                        if (data.sessionId && data.sessionId !== currentUser.sessionId) {
+                            // Другая сессия зашла в аккаунт
+                            alert('Этот аккаунт был открыт на другом устройстве. Вы вышли.');
+                            logout();
+                        }
+                    } else {
+                        // Документ удалён (аккаунт удалён)
+                        alert('Аккаунт был удалён.');
+                        logout();
+                    }
+                });
+
                 if (currentUser.colors) playerColors = currentUser.colors;
                 updateAllAvatars();
                 loginSuccess();
             } catch (error) {
-                errorDiv.textContent = 'Ошибка: ' + (error.message || 'Неверный логин или пароль');
+                console.error(error);
+                let message = 'Ошибка при входе';
+                if (error.code === 'auth/user-not-found') {
+                    message = 'Пользователь с таким ником не найден';
+                } else if (error.code === 'auth/wrong-password') {
+                    message = 'Неверный пароль';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'Некорректный ник';
+                } else {
+                    message = error.message || 'Неизвестная ошибка';
+                }
+                errorDiv.textContent = message;
                 errorDiv.style.display = 'block';
             }
         }
@@ -1210,8 +1243,29 @@
                     created: Date.now()
                 };
                 await db.collection('users').doc(user.uid).set(newUser);
+                
+                // Генерируем sessionId
+                const sessionId = Math.random().toString(36).substring(2) + Date.now();
+                await db.collection('users').doc(user.uid).update({ sessionId });
+                newUser.sessionId = sessionId;
                 currentUser = { uid: user.uid, ...newUser };
                 playerColors = newUser.colors;
+
+                // Устанавливаем слушатель
+                if (sessionListener) sessionListener();
+                sessionListener = db.collection('users').doc(user.uid).onSnapshot((docSnapshot) => {
+                    if (docSnapshot.exists) {
+                        const data = docSnapshot.data();
+                        if (data.sessionId && data.sessionId !== currentUser.sessionId) {
+                            alert('Этот аккаунт был открыт на другом устройстве. Вы вышли.');
+                            logout();
+                        }
+                    } else {
+                        alert('Аккаунт был удалён.');
+                        logout();
+                    }
+                });
+
                 updateAllAvatars();
                 loginSuccess();
             } catch (error) {
@@ -1248,6 +1302,11 @@
         }
 
         async function logout() {
+            // Отписываемся от слушателя
+            if (sessionListener) {
+                sessionListener();
+                sessionListener = null;
+            }
             if (!currentUser?.isGuest && currentUser?.uid) {
                 // Сохраняем цвета перед выходом
                 if (currentUser.colors) currentUser.colors = playerColors;
@@ -1276,13 +1335,22 @@
             }
             if (confirm('Вы уверены, что хотите удалить аккаунт? Это действие необратимо.')) {
                 try {
+                    const user = auth.currentUser;
+                    if (!user) throw new Error('Нет активного пользователя');
+                    
+                    // Отзываем токены, чтобы завершить сессии на всех устройствах
+                    await user.revokeRefreshTokens();
+                    
                     // Удаляем документ из Firestore
                     await db.collection('users').doc(currentUser.uid).delete();
+                    
                     // Удаляем пользователя из Authentication
-                    const user = auth.currentUser;
-                    if (user) await user.delete();
-                    logout(); // выходим
+                    await user.delete();
+                    
+                    // Выходим на текущем устройстве
+                    logout();
                 } catch (error) {
+                    console.error('Ошибка при удалении:', error);
                     alert('Ошибка при удалении: ' + error.message);
                 }
             }
@@ -1295,10 +1363,16 @@
             Array.from(parentPicker.children).forEach(opt => opt.classList.remove('selected'));
             element.classList.add('selected');
             updateAllAvatars();
-            // Сохраняем в Firestore, если пользователь не гость
             if (currentUser && !currentUser.isGuest && currentUser.uid) {
                 db.collection('users').doc(currentUser.uid).update({ colors: playerColors })
-                    .catch(e => console.error('Ошибка сохранения цвета:', e));
+                    .catch(error => {
+                        console.error('Ошибка сохранения цвета:', error);
+                        // Если ошибка из-за отсутствия прав или токена, выходим
+                        if (error.code === 'permission-denied' || error.code === 'unauthenticated' || error.message.includes('permission')) {
+                            alert('Сессия истекла. Пожалуйста, войдите снова.');
+                            logout();
+                        }
+                    });
             }
         }
 
@@ -1330,7 +1404,7 @@
             document.querySelector('.game-card-large').classList.add('selected');
         }
 
-        // ==================== МУЛЬТИПЛЕЕР (ФИНАЛЬНАЯ ВЕРСИЯ) ====================
+        // ==================== МУЛЬТИПЛЕЕР ====================
         let peer = null;
         let connections = new Map();
         let otherPlayers = new Map();
@@ -1955,12 +2029,27 @@
         }
 
         async function startGame() {
+            // Проверяем, что пользователь всё ещё аутентифицирован (если не гость)
+            if (!currentUser?.isGuest) {
+                try {
+                    // Проверяем, актуален ли токен
+                    if (!auth.currentUser) {
+                        throw new Error('Not authenticated');
+                    }
+                    // Принудительно обновляем токен, чтобы проверить его валидность
+                    await auth.currentUser.getIdToken(true);
+                } catch (e) {
+                    alert('Сессия истекла. Пожалуйста, войдите снова.');
+                    logout();
+                    return;
+                }
+            }
+
             document.getElementById('menu-container').style.display = 'none';
             document.getElementById('game-container').classList.add('active');
             if (window.innerWidth <= 768) document.getElementById('mobile-controls').classList.add('active');
 
-            await initMultiplayer(); // Ждём инициализацию мультиплеера
-
+            await initMultiplayer();
             initThreeJSGame(document.getElementById('game-canvas'));
             initMobileControls();
         }
