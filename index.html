@@ -5,7 +5,7 @@
     <title>Yourblocks — Надёжный мультиплеер</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* Все исходные стили сохранены */
+        /* Все исходные стили сохранены (без изменений) */
         * {
             margin: 0;
             padding: 0;
@@ -162,7 +162,6 @@
             text-align: center;
             display: none;
         }
-        /* Новые стили для блока предложений */
         .suggested-names {
             margin-top: 15px;
             display: flex;
@@ -189,7 +188,6 @@
         .suggested-name:active {
             transform: scale(0.95);
         }
-        /* Остальные стили без изменений */
         #menu-container {
             position: absolute;
             top: 0;
@@ -804,8 +802,6 @@
                 font-size: 16px;
             }
         }
-
-        /* Отладочная панель */
         #debug-panel {
             position: absolute;
             bottom: 250px;
@@ -854,8 +850,6 @@
             font-weight: bold;
             cursor: pointer;
         }
-
-        /* Скрыть весь интерфейс игры, который на фото */
         .game-exit-button,
         .exit-hint,
         .server-status,
@@ -915,7 +909,6 @@
                 <button class="login-btn" onclick="handleRegister()">Зарегистрироваться</button>
                 <button class="guest-btn" onclick="handleGuest()">Продолжить как гость</button>
                 <div id="register-error" class="error-message"></div>
-                <!-- Блок предложений -->
                 <div id="suggested-usernames" class="suggested-names"></div>
             </div>
         </div>
@@ -1083,7 +1076,6 @@
                     </div>
                 </div>
             </div>
-            <!-- Новая секция "Настройки" -->
             <div id="settings-section" class="content-section">
                 <h2 style="color: #fff; margin-bottom: 20px;">Настройки аккаунта</h2>
                 <div style="background: #1e1e1e; border-radius: 16px; padding: 30px; text-align: center;">
@@ -1112,7 +1104,6 @@
         <div class="ground-indicator onground" id="ground-indicator">🟢 НА ЗЕМЛЕ</div>
         <div class="jump-hint">👆 Левая часть - движение, правая - камера + прыжок</div>
 
-        <!-- Отладочные элементы -->
         <div id="debug-panel"></div>
         <div id="manual-connect" style="display: none;">
             <input type="text" id="peer-id-input" placeholder="ID друга">
@@ -1148,7 +1139,6 @@
             measurementId: "G-JSWF0QVSJ9"
         };
         firebase.initializeApp(firebaseConfig);
-        // Запрет контекстного меню (правый клик)
         document.addEventListener('contextmenu', (e) => e.preventDefault());
 
         const auth = firebase.auth();
@@ -1164,7 +1154,6 @@
         };
         let sessionListener = null;
 
-        // Списки для генерации ников (можно расширять)
         const namePrefixes = [
             'Cool', 'Fast', 'Shadow', 'Crazy', 'Neon', 'Space', 'Dark', 'Fire', 'Ice', 'Star',
             'Wolf', 'Dragon', 'Phoenix', 'Thunder', 'Storm', 'Blaze', 'Ghost', 'Hunter', 'Knight', 'Ninja',
@@ -1178,25 +1167,21 @@
             'Игрок', 'Мастер', 'Король', 'Королева', 'Властелин', 'Воин', 'Убийца', 'Герой'
         ];
 
-        // Вспомогательная функция для преобразования ника в email
         function nickToEmail(nick) {
             return nick.trim().toLowerCase().replace(/\s+/g, '') + '@yourblocks-ccdb7.firebaseapp.com';
         }
 
-        // ==================== ПРОВЕРКА СВОБОДЕН ЛИ НИК ====================
         async function isUsernameFree(username) {
             if (!username) return false;
             const snapshot = await db.collection('users').where('username', '==', username).get();
             return snapshot.empty;
         }
 
-        // ==================== ГЕНЕРАЦИЯ СЛУЧАЙНОГО НИКА ====================
         function generateRandomUsername() {
             const usePrefixFirst = Math.random() > 0.5;
             let name = '';
             if (usePrefixFirst) {
                 name = namePrefixes[Math.floor(Math.random() * namePrefixes.length)];
-                // Добавляем случайное число или суффикс
                 if (Math.random() > 0.6) {
                     name += Math.floor(Math.random() * 1000);
                 } else {
@@ -1206,21 +1191,17 @@
                 name = nameSuffixes[Math.floor(Math.random() * nameSuffixes.length)];
                 name += namePrefixes[Math.floor(Math.random() * namePrefixes.length)];
             }
-            // Иногда добавляем символы
             if (Math.random() > 0.7) {
                 const symbols = ['_', '.', '-', ''];
                 name += symbols[Math.floor(Math.random() * symbols.length)] + Math.floor(Math.random() * 100);
             }
-            // Убедимся, что ник не слишком длинный
             if (name.length > 20) name = name.substring(0, 20);
             return name;
         }
 
-        // ==================== ПОЛУЧИТЬ НЕСКОЛЬКО СВОБОДНЫХ НИКОВ ====================
         async function getFreeUsernames(count = 3) {
             const freeNames = [];
             const attempts = new Set();
-            // Максимальное количество попыток, чтобы избежать бесконечного цикла
             for (let i = 0; i < 30 && freeNames.length < count; i++) {
                 const candidate = generateRandomUsername();
                 if (attempts.has(candidate)) continue;
@@ -1232,11 +1213,10 @@
             return freeNames;
         }
 
-        // ==================== ОБНОВИТЬ ПРЕДЛОЖЕНИЯ ====================
         async function refreshSuggestions() {
             const container = document.getElementById('suggested-usernames');
             if (!container) return;
-            container.innerHTML = ''; // очищаем
+            container.innerHTML = '';
             const freeNames = await getFreeUsernames(3);
             freeNames.forEach(name => {
                 const span = document.createElement('span');
@@ -1249,13 +1229,11 @@
             });
         }
 
-        // ==================== ФУНКЦИИ ВХОДА / РЕГИСТРАЦИИ ====================
         function switchLoginTab(tab) {
             document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
             document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
             document.getElementById(tab + '-form').classList.add('active');
-            // Если переключились на регистрацию, обновляем предложения
             if (tab === 'register') {
                 refreshSuggestions();
             }
@@ -1299,7 +1277,6 @@
                     if (docSnapshot.exists) {
                         const data = docSnapshot.data();
                         if (data.sessionId && data.sessionId !== currentUser.sessionId) {
-                            // ЗАМЕНА ТЕКСТА УВЕДОМЛЕНИЯ
                             alert('В этот аккаунт вошли с другого устройства. Если это не вы, срочно поменяйте пароль.');
                             logout();
                         }
@@ -1354,12 +1331,11 @@
                 errorDiv.style.display = 'block';
                 return;
             }
-            // Проверка, свободен ли ник (дополнительно)
             const free = await isUsernameFree(username);
             if (!free) {
                 errorDiv.textContent = 'Аккаунт с таким ником уже существует';
                 errorDiv.style.display = 'block';
-                refreshSuggestions(); // обновить предложения
+                refreshSuggestions();
                 return;
             }
             const email = nickToEmail(username);
@@ -1407,7 +1383,7 @@
                     errorDiv.textContent = 'Ошибка: ' + (error.message || 'Не удалось зарегистрироваться');
                 }
                 errorDiv.style.display = 'block';
-                refreshSuggestions(); // обновить предложения
+                refreshSuggestions();
             }
         }
 
@@ -1484,7 +1460,6 @@
             }
         }
 
-        // ==================== КАСТОМИЗАЦИЯ ====================
         function setPartColor(part, color, element) {
             playerColors[part] = color;
             const parentPicker = element.parentNode;
@@ -1511,7 +1486,6 @@
             });
         }
 
-        // ==================== УПРАВЛЕНИЕ СТРАНИЦАМИ ====================
         function switchPage(page) {
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             event.currentTarget.classList.add('active');
@@ -1531,7 +1505,7 @@
             document.querySelector('.game-card-large').classList.add('selected');
         }
 
-        // ==================== МУЛЬТИПЛЕЕР (без изменений, кроме текста уведомления) ====================
+        // ==================== МУЛЬТИПЛЕЕР ====================
         let peer = null;
         let connections = new Map();
         let otherPlayers = new Map();
@@ -1768,8 +1742,14 @@
             return group;
         }
 
+        // Улучшенная проверка на земле с помощью raycast
         function isOnGround() {
-            return localPlayerBody && Math.abs(localPlayerBody.velocity.y) < 0.1;
+            if (!world || !localPlayerBody) return false;
+            const from = new CANNON.Vec3(localPlayerBody.position.x, localPlayerBody.position.y, localPlayerBody.position.z);
+            const to = new CANNON.Vec3(localPlayerBody.position.x, localPlayerBody.position.y - 1.2, localPlayerBody.position.z); // чуть ниже ног
+            const rayResult = new CANNON.RaycastResult();
+            world.rayTest(from, to, rayResult);
+            return rayResult.hasHit;
         }
 
         function initThreeJSGame(container) {
@@ -1806,7 +1786,6 @@
 
             deathBlocks = [];
 
-            // ==================== УРОВЕНЬ (как в предыдущих версиях) ====================
             function createLevel() {
                 const groundMesh = new THREE.Mesh(
                     new THREE.BoxGeometry(80, 2, 80),
@@ -1983,7 +1962,6 @@
                 const delta = 0.016;
                 world.step(1 / 60, delta, 3);
 
-                // Смерть
                 let dead = false;
                 if (localPlayerBody.position.y < deathHeight) dead = true;
                 if (!dead) {
@@ -2003,7 +1981,6 @@
                     localPlayerBody.velocity.set(0, 0, 0);
                 }
 
-                // Движение - теперь только если на земле
                 const moveSpeed = 12;
                 let moveX = 0, moveZ = 0;
                 if (keys["KeyW"]) moveZ += 1;
@@ -2015,13 +1992,13 @@
                     moveZ += -joystickVector.y;
                 }
 
-                // Проверка на земле
+                // Используем raycast для проверки земли
                 const onGround = isOnGround();
                 groundIndicator.textContent = onGround ? '🟢 НА ЗЕМЛЕ' : '🔴 В ВОЗДУХЕ';
                 groundIndicator.classList.toggle('onground', onGround);
                 groundIndicator.classList.toggle('air', !onGround);
 
-                // Обновление внешнего вида кнопки прыжка в зависимости от состояния на земле
+                // Визуальное отключение кнопки прыжка в воздухе
                 if (jumpBtn) {
                     if (onGround) {
                         jumpBtn.classList.remove('disabled');
@@ -2030,12 +2007,12 @@
                     } else {
                         jumpBtn.classList.add('disabled');
                         jumpBtn.style.opacity = '0.5';
-                        jumpBtn.style.pointerEvents = 'auto'; // Обработчик всё равно отклонит
+                        jumpBtn.style.pointerEvents = 'auto'; // обработчик сам отклонит
                     }
                 }
 
                 if (onGround) {
-                    // Применяем движение только на земле
+                    // Движение только на земле
                     if (moveX !== 0 || moveZ !== 0) {
                         const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
                         moveX /= len; moveZ /= len;
@@ -2048,8 +2025,7 @@
                     localPlayerBody.velocity.x = (forward.x * moveZ + right.x * moveX) * moveSpeed;
                     localPlayerBody.velocity.z = (forward.z * moveZ + right.z * moveX) * moveSpeed;
                 } else {
-                    // В воздухе горизонтальная скорость не меняется (инерция)
-                    // Можно добавить небольшое управление, но оставим как есть
+                    // В воздухе — инерция, скорость не меняем
                 }
 
                 if ((jumpPressed || jumpButtonPressed) && onGround) {
@@ -2059,12 +2035,10 @@
                     jumpBtn.classList.remove('active');
                 }
 
-                // Анимация
                 const moving = onGround && (Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1);
                 if (moving) walkTime += delta * 12;
                 animatePlayer(localModel, walkTime, moving);
 
-                // Отправка позиции другим игрокам
                 if (connections.size > 0) {
                     const now = Date.now();
                     if (now - lastSendTime > 100) {
@@ -2073,14 +2047,12 @@
                     }
                 }
 
-                // Обновление позиций других игроков
                 otherPlayers.forEach((player) => {
                     if (player.model && player.targetPos) {
                         player.model.position.lerp(player.targetPos, 0.3);
                     }
                 });
 
-                // Камера
                 camera.position.set(0, 3, cameraDistance);
                 localModel.position.copy(localPlayerBody.position);
                 yawObject.position.copy(localPlayerBody.position);
@@ -2163,12 +2135,10 @@
                 cameraTouchActive = false;
             });
 
-            // Обработчики кнопки прыжка с проверкой на земле
             jumpBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Если игрок в воздухе или localPlayerBody ещё не создан – игнорируем
-                if (!localPlayerBody || !isOnGround()) return;
+                if (!localPlayerBody || !isOnGround()) return; // блокировка в воздухе
                 jumpButtonPressed = true;
                 jumpBtn.classList.add('active');
             });
@@ -2223,9 +2193,7 @@
             }
         });
 
-        // При загрузке страницы инициализируем предложения (если активна вкладка регистрации)
         window.addEventListener('load', () => {
-            // Проверим, может быть активна регистрация (по умолчанию активен вход)
             if (document.getElementById('register-form').classList.contains('active')) {
                 refreshSuggestions();
             }
