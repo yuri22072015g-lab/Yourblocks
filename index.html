@@ -1228,6 +1228,12 @@
         let adminGodMode = false;
         // Оригинальная масса игрока (для восстановления)
         let originalPlayerMass = 5;
+        // Переменные для зума
+        let cameraDistance = 8;
+        let firstPerson = false;
+        const minDistance = 2;
+        const maxDistance = 15;
+        let gameActive = false;
 
         const namePrefixes = [
             'Cool', 'Fast', 'Shadow', 'Crazy', 'Neon', 'Space', 'Dark', 'Fire', 'Ice', 'Star',
@@ -1375,6 +1381,13 @@
                 sessionListener = db.collection('users').doc(user.uid).onSnapshot((docSnapshot) => {
                     if (docSnapshot.exists) {
                         const data = docSnapshot.data();
+                        // Проверка на бан
+                        const banCheck = isUserBanned(data);
+                        if (banCheck.banned) {
+                            alert(`Вы были забанены. Причина: ${banCheck.reason || 'не указана'}`);
+                            logout();
+                            return;
+                        }
                         if (data.sessionId && data.sessionId !== currentUser.sessionId) {
                             alert('В этот аккаунт вошли с другого устройства. Если это не вы, срочно поменяйте пароль.');
                             logout();
@@ -1463,6 +1476,13 @@
                 sessionListener = db.collection('users').doc(user.uid).onSnapshot((docSnapshot) => {
                     if (docSnapshot.exists) {
                         const data = docSnapshot.data();
+                        // Проверка на бан
+                        const banCheck = isUserBanned(data);
+                        if (banCheck.banned) {
+                            alert(`Вы были забанены. Причина: ${banCheck.reason || 'не указана'}`);
+                            logout();
+                            return;
+                        }
                         if (data.sessionId && data.sessionId !== currentUser.sessionId) {
                             alert('В этот аккаунт вошли с другого устройства. Если это не вы, срочно поменяйте пароль.');
                             logout();
@@ -1990,6 +2010,8 @@
         }
 
         function initThreeJSGame(container) {
+            gameActive = true;
+
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87ceeb);
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2000);
@@ -2003,8 +2025,10 @@
             yawObject.add(pitchObject);
             pitchObject.add(camera);
             scene.add(yawObject);
-            let cameraDistance = 8;
-            camera.position.set(0, 3, cameraDistance);
+            // начальное расстояние камеры
+            cameraDistance = 8;
+            firstPerson = false;
+            if (localModel) localModel.visible = true;
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
@@ -2186,6 +2210,20 @@
                 pitchObject.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitchObject.rotation.x));
             });
 
+            // Обработчик колесика мыши для зума
+            document.addEventListener('wheel', (e) => {
+                if (!gameActive) return;
+                const delta = e.deltaY > 0 ? 1 : -1; // прокрутка вниз (от себя) увеличиваем расстояние
+                cameraDistance = Math.max(minDistance, Math.min(maxDistance, cameraDistance + delta));
+                if (cameraDistance <= minDistance + 0.1) {
+                    firstPerson = true;
+                    if (localModel) localModel.visible = false;
+                } else {
+                    firstPerson = false;
+                    if (localModel) localModel.visible = true;
+                }
+            });
+
             const spawnPosition = new CANNON.Vec3(0, 5, 10);
             const deathHeight = -10;
             const groundIndicator = document.getElementById('ground-indicator');
@@ -2321,7 +2359,12 @@
                     }
                 });
 
-                camera.position.set(0, 3, cameraDistance);
+                if (firstPerson) {
+                    // камера на уровне глаз
+                    camera.position.set(0, 3.2, 0);
+                } else {
+                    camera.position.set(0, 3, cameraDistance);
+                }
                 localModel.position.copy(localPlayerBody.position);
                 yawObject.position.copy(localPlayerBody.position);
 
@@ -2448,6 +2491,7 @@
         }
 
         function exitGame() {
+            gameActive = false;
             if (peer) peer.destroy();
             document.getElementById('menu-container').style.display = 'flex';
             document.getElementById('game-container').classList.remove('active');
