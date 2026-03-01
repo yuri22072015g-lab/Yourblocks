@@ -5,7 +5,7 @@
     <title>Yourblocks — Надёжный мультиплеер</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        /* Все исходные стили сохранены, добавлены новые для предложений */
+        /* Все исходные стили сохранены, добавлены новые для предложений и для скрытия интерфейса */
         * {
             margin: 0;
             padding: 0;
@@ -853,6 +853,19 @@
             color: white;
             font-weight: bold;
             cursor: pointer;
+        }
+
+        /* Скрыть весь интерфейс игры, который на фото */
+        .game-exit-button,
+        .exit-hint,
+        .server-status,
+        .players-count,
+        .ground-indicator,
+        .jump-hint,
+        #debug-panel,
+        #manual-connect,
+        #mobile-controls {
+            display: none !important;
         }
     </style>
     <!-- Firebase SDK с Firestore -->
