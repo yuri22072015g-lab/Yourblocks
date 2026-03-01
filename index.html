@@ -1769,7 +1769,7 @@
         }
 
         function isOnGround() {
-            return Math.abs(localPlayerBody.velocity.y) < 0.1;
+            return localPlayerBody && Math.abs(localPlayerBody.velocity.y) < 0.1;
         }
 
         function initThreeJSGame(container) {
@@ -1976,6 +1976,7 @@
 
             walkTime = 0;
             let lastSendTime = 0;
+            const jumpBtn = document.getElementById('jump-button');
 
             function animate() {
                 requestAnimationFrame(animate);
@@ -2020,6 +2021,19 @@
                 groundIndicator.classList.toggle('onground', onGround);
                 groundIndicator.classList.toggle('air', !onGround);
 
+                // Обновление внешнего вида кнопки прыжка в зависимости от состояния на земле
+                if (jumpBtn) {
+                    if (onGround) {
+                        jumpBtn.classList.remove('disabled');
+                        jumpBtn.style.opacity = '1';
+                        jumpBtn.style.pointerEvents = 'auto';
+                    } else {
+                        jumpBtn.classList.add('disabled');
+                        jumpBtn.style.opacity = '0.5';
+                        jumpBtn.style.pointerEvents = 'auto'; // Обработчик всё равно отклонит
+                    }
+                }
+
                 if (onGround) {
                     // Применяем движение только на земле
                     if (moveX !== 0 || moveZ !== 0) {
@@ -2042,7 +2056,7 @@
                     localPlayerBody.velocity.y = 10;
                     jumpPressed = false;
                     jumpButtonPressed = false;
-                    document.getElementById('jump-button').classList.remove('active');
+                    jumpBtn.classList.remove('active');
                 }
 
                 // Анимация
@@ -2149,9 +2163,12 @@
                 cameraTouchActive = false;
             });
 
+            // Обработчики кнопки прыжка с проверкой на земле
             jumpBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                // Если игрок в воздухе или localPlayerBody ещё не создан – игнорируем
+                if (!localPlayerBody || !isOnGround()) return;
                 jumpButtonPressed = true;
                 jumpBtn.classList.add('active');
             });
