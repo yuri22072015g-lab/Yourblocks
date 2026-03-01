@@ -1746,7 +1746,7 @@
         function isOnGround() {
             if (!world || !localPlayerBody) return false;
             const from = new CANNON.Vec3(localPlayerBody.position.x, localPlayerBody.position.y, localPlayerBody.position.z);
-            const to = new CANNON.Vec3(localPlayerBody.position.x, localPlayerBody.position.y - 1.2, localPlayerBody.position.z); // чуть ниже ног
+            const to = new CANNON.Vec3(localPlayerBody.position.x, localPlayerBody.position.y - 1.2, localPlayerBody.position.z);
             const rayResult = new CANNON.RaycastResult();
             world.rayTest(from, to, rayResult);
             return rayResult.hasHit;
@@ -1992,7 +1992,6 @@
                     moveZ += -joystickVector.y;
                 }
 
-                // Используем raycast для проверки земли
                 const onGround = isOnGround();
                 groundIndicator.textContent = onGround ? '🟢 НА ЗЕМЛЕ' : '🔴 В ВОЗДУХЕ';
                 groundIndicator.classList.toggle('onground', onGround);
@@ -2007,27 +2006,24 @@
                     } else {
                         jumpBtn.classList.add('disabled');
                         jumpBtn.style.opacity = '0.5';
-                        jumpBtn.style.pointerEvents = 'auto'; // обработчик сам отклонит
+                        jumpBtn.style.pointerEvents = 'auto';
                     }
                 }
 
-                if (onGround) {
-                    // Движение только на земле
-                    if (moveX !== 0 || moveZ !== 0) {
-                        const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
-                        moveX /= len; moveZ /= len;
-                        localModel.rotation.y = Math.atan2(moveX, moveZ);
-                    }
-                    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
-                    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
-                    forward.y = 0; right.y = 0;
-                    forward.normalize(); right.normalize();
-                    localPlayerBody.velocity.x = (forward.x * moveZ + right.x * moveX) * moveSpeed;
-                    localPlayerBody.velocity.z = (forward.z * moveZ + right.z * moveX) * moveSpeed;
-                } else {
-                    // В воздухе — инерция, скорость не меняем
+                // Движение: работает всегда (и на земле, и в воздухе)
+                if (moveX !== 0 || moveZ !== 0) {
+                    const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
+                    moveX /= len; moveZ /= len;
+                    localModel.rotation.y = Math.atan2(moveX, moveZ);
                 }
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(yawObject.quaternion);
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(yawObject.quaternion);
+                forward.y = 0; right.y = 0;
+                forward.normalize(); right.normalize();
+                localPlayerBody.velocity.x = (forward.x * moveZ + right.x * moveX) * moveSpeed;
+                localPlayerBody.velocity.z = (forward.z * moveZ + right.z * moveX) * moveSpeed;
 
+                // Прыжок возможен только на земле
                 if ((jumpPressed || jumpButtonPressed) && onGround) {
                     localPlayerBody.velocity.y = 10;
                     jumpPressed = false;
@@ -2035,7 +2031,7 @@
                     jumpBtn.classList.remove('active');
                 }
 
-                const moving = onGround && (Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1);
+                const moving = (Math.abs(localPlayerBody.velocity.x) > 0.1 || Math.abs(localPlayerBody.velocity.z) > 0.1);
                 if (moving) walkTime += delta * 12;
                 animatePlayer(localModel, walkTime, moving);
 
