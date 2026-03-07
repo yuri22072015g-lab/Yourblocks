@@ -3,211 +3,553 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор фото HTML — Нейросеть</title>
+    <title>Злой Учитель · голосовой троллинг</title>
     <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            color: #333;
-            text-align: center;
-        }
-        h1 {
-            margin-bottom: 0.5rem;
-            font-weight: 300;
-            color: #2c3e50;
-        }
-        p {
-            margin-top: 0;
-            color: #555;
-        }
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-        input[type="text"] {
-            width: 70%;
-            padding: 12px 20px;
-            margin: 8px 0;
-            border: 2px solid #ddd;
-            border-radius: 30px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #3498db;
-        }
-        button {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 16px;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: background 0.3s, transform 0.1s;
-            margin-left: 10px;
-        }
-        button:hover {
-            background: #2980b9;
-        }
-        button:active {
-            transform: scale(0.98);
-        }
-        .image-container {
-            margin-top: 30px;
-            min-height: 300px;
+            margin: 0;
+            background: linear-gradient(145deg, #1a0f0f 0%, #2b1a1a 100%);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            background: #f8f9fa;
-            border-radius: 20px;
-            padding: 20px;
-            border: 2px dashed #ccc;
+            padding: 16px;
         }
-        .image-container img {
-            max-width: 100%;
-            max-height: 400px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(30, 20, 20, 0.95);
+            backdrop-filter: blur(8px);
+            border-radius: 40px;
+            padding: 28px;
+            box-shadow: 0 30px 50px #5a000080, 0 0 20px #ff4444;
+            border: 2px solid #a33c3c;
         }
-        .loading {
-            color: #7f8c8d;
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .title {
+            font-size: 2.8rem;
+            font-weight: 900;
+            color: #ffaaaa;
+            text-shadow: 0 0 20px #ff0000, 2px 2px 0 #5a0000;
+            letter-spacing: 2px;
+        }
+        .sub {
+            color: #dba0a0;
             font-style: italic;
         }
-        .examples {
-            margin-top: 20px;
+        .history {
+            background: #1f1313;
+            border-radius: 28px;
+            padding: 20px;
+            height: 350px;
+            overflow-y: auto;
+            border: 2px solid #8f4040;
+            margin-bottom: 20px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
         }
-        .example-btn {
-            background: #ecf0f1;
-            color: #2c3e50;
+        .message {
+            padding: 12px 20px;
+            border-radius: 24px;
+            max-width: 80%;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+        .user {
+            background: #3f2a2a;
+            align-self: flex-end;
+            border-bottom-right-radius: 6px;
+            border: 1px solid #d46b6b;
+            color: #ffe0e0;
+        }
+        .bot {
+            background: #2a1a1a;
+            align-self: flex-start;
+            border-bottom-left-radius: 6px;
+            border: 1px solid #ff7b7b;
+            color: #ffd0d0;
+        }
+        .input-line {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        input {
+            flex: 1;
+            background: #1f1313;
+            border: 2px solid #8f4040;
+            border-radius: 60px;
+            padding: 16px 24px;
+            font-size: 1rem;
+            color: #ffe0e0;
+            outline: none;
+        }
+        input::placeholder {
+            color: #b07070;
+        }
+        .mic-btn {
+            background: #5a2e2e;
             border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
+            border-radius: 60px;
+            width: 60px;
+            height: 60px;
+            font-size: 2rem;
             cursor: pointer;
-            font-size: 14px;
-            transition: background 0.3s;
+            border: 2px solid #c44;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
         }
-        .example-btn:hover {
-            background: #bdc3c7;
+        .mic-btn:hover {
+            background: #7a3a3a;
         }
-        footer {
-            margin-top: 30px;
-            font-size: 12px;
-            color: #7f8c8d;
+        .mic-btn.listening {
+            background: #aa3939;
+            border-color: #ffaaaa;
+            animation: pulse 1s infinite;
         }
-        a {
-            color: #3498db;
-            text-decoration: none;
+        @keyframes pulse {
+            0% { box-shadow: 0 0 5px #ff8888; }
+            50% { box-shadow: 0 0 20px #ff4444; }
+            100% { box-shadow: 0 0 5px #ff8888; }
+        }
+        .send-btn {
+            background: #5a2e2e;
+            border: none;
+            border-radius: 60px;
+            padding: 0 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            border: 2px solid #c44;
+            transition: 0.2s;
+            height: 60px;
+        }
+        .send-btn:hover {
+            background: #7a3a3a;
+        }
+        .status {
+            text-align: center;
+            margin-top: 16px;
+            color: #c96b6b;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎨 Генератор фото по описанию</h1>
-        <p>Нейросеть создаст изображение по вашему тексту. Попробуйте что-то вроде <em>"современный сайт с тёмной темой"</em></p>
-        
-        <div style="margin: 20px 0;">
-            <input type="text" id="prompt" placeholder="Введите описание изображения..." value="красивый лендинг с космической тематикой">
-            <button id="generateBtn">Сгенерировать</button>
-        </div>
-        
-        <div class="examples">
-            <button class="example-btn">лендинг космос</button>
-            <button class="example-btn">интернет-магазин одежды</button>
-            <button class="example-btn">блог о путешествиях</button>
-            <button class="example-btn">панель администратора</button>
-            <button class="example-btn">сайт ресторана</button>
-            <button class="example-btn">портфолио фотографа</button>
-        </div>
-        
-        <div class="image-container" id="imageContainer">
-            <div class="loading" id="loadingText">✨ Здесь появится сгенерированное изображение</div>
-        </div>
+<div class="container">
+    <div class="header">
+        <div class="title">👿 ЗЛОЙ УЧИТЕЛЬ</div>
+        <div class="sub">за мат извините, за тупость — нет</div>
     </div>
-    
-    <footer>
-        Работает через бесплатное API <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> · 
-        Модель: Stable Diffusion · <a href="#" id="disclaimerLink">О проекте</a>
-    </footer>
+    <div class="history" id="history">
+        <div class="message bot">Я злой учитель. Буду гнобить тебя, пока не выучишь английский или не решишь примеры. Напиши "английский" или отправь пример. Дроби пиши через точку, урод. И можешь говорить в микрофон – посмотрим, как ты шепелявишь.</div>
+    </div>
+    <div class="input-line">
+        <input type="text" id="userInput" placeholder="Пиши сюда или жми микрофон" autofocus>
+        <button class="mic-btn" id="micBtn">🎤</button>
+        <button class="send-btn" id="sendBtn">➤</button>
+    </div>
+    <div class="status" id="status">⚡ режим: злой · мат активен</div>
+</div>
 
-    <script>
-        const promptInput = document.getElementById('prompt');
-        const generateBtn = document.getElementById('generateBtn');
-        const imageContainer = document.getElementById('imageContainer');
-        const loadingText = document.getElementById('loadingText');
-        
-        // Функция загрузки изображения по промпту
-        function generateImage(prompt) {
-            if (!prompt.trim()) {
-                alert('Пожалуйста, введите описание');
-                return;
+<script>
+(function() {
+    // ---------- СОСТОЯНИЕ ----------
+    let currentTask = null;             // активное задание: { type: 'math', examples: [...], currentIndex } или { type: 'english', words: [...], currentIndex, correctCount, halfReached }
+    let englishWords = [
+        { ru: 'яблоко', en: 'apple' },
+        { ru: 'машина', en: 'car' },
+        { ru: 'собака', en: 'dog' },
+        { ru: 'книга', en: 'book' },
+        { ru: 'дом', en: 'house' },
+        { ru: 'вода', en: 'water' },
+        { ru: 'солнце', en: 'sun' },
+        { ru: 'друг', en: 'friend' },
+        { ru: 'стол', en: 'table' },
+        { ru: 'стул', en: 'chair' },
+        { ru: 'окно', en: 'window' },
+        { ru: 'дверь', en: 'door' },
+        { ru: 'ночь', en: 'night' },
+        { ru: 'день', en: 'day' },
+        { ru: 'человек', en: 'man' },
+        { ru: 'женщина', en: 'woman' },
+        { ru: 'ребёнок', en: 'child' },
+        { ru: 'время', en: 'time' },
+        { ru: 'мир', en: 'world' },
+        { ru: 'жизнь', en: 'life' }
+    ];
+    const HALF_COUNT = Math.floor(englishWords.length / 2); // 10
+
+    // ---------- ФРАЗЫ ДЛЯ ЗЛОГО РЕЖИМА (МАТ, ОСКОРБЛЕНИЯ, ЛЕНЬ) ----------
+    const evil = {
+        greeting: [
+            'О, опять ты, х**ло?',
+            'Чего припёрся, п*****? Мне лень с тобой разговаривать.',
+            'Здарова, д*бил. Только быстро, я устал.',
+            'Ну чё надо? Отвечу, если не лень будет.',
+            'Явился – не запылился.'
+        ],
+        howareyou: [
+            'А тебе какое е*ать дело?',
+            'Нормально, у тебя-то рыло не треснет?',
+            'Живой пока, тварь, но от тебя устал.',
+            'Как дела? Плохо, потому что ты бесишь.',
+            'Устал я, отстань.'
+        ],
+        bye: [
+            'Вали давай, м*дак.',
+            'Свободен, иди на х*й.',
+            'Пока, чмо, и не возвращайся.',
+            'Наконец-то отвалил, надоел.'
+        ],
+        weather: [
+            'Какая погода? Ты с дуба рухнул? Иди на улицу и смотри, дебил.',
+            'Дождь или снег – мне насрать, я вообще спать хочу.',
+            'Погода? Мне лень даже думать об этом.'
+        ],
+        name: [
+            'Меня звать Господин, понял, урод?',
+            'Для тебя я – Тролль, б***ь. Запомни и не беси.',
+            'Имя? Какая разница, ты всё равно тупой.'
+        ],
+        age: [
+            'Старше твоего папы, лох.',
+            'Столько, что ты со счёта сбился, тупень.',
+            'Мне столько лет, что я устал от таких как ты.'
+        ],
+        whatcanyoudo: [
+            'Могу тебя затраллить так, что мама не узнает, п*****.',
+            'Умею бесить, тупить и ржать над тобой, д*бил.',
+            'Могу ещё ничего не делать, мне лень.'
+        ],
+        joke: [
+            'Ты сам шутка, м*дак.',
+            'Анекдот: идёт пользователь к нейросети... а она его посылает на х*й.',
+            'Шутка? Мне не до шуток, я устал.'
+        ],
+        love: [
+            'Любовь? Ты про что, д*бил? Я тебя щас так полюблю – мало не покажется, б***ь.',
+            'Ты мне нравишься, когда молчишь, чмо.',
+            'Любовь? Отвали, мне лень.'
+        ],
+        // Математика
+        math_start: [
+            'Ты чё, сам решить не можешь? На, давай сам: {example} Ответ давай, п*****!',
+            'Я тебе не калькулятор, м*дак! Решай: {example} Быстро!'
+        ],
+        math_next: [
+            'Ну ладно, правильно. Но это было легко. А теперь вот это: {example}',
+            'Хорошо, гений. Дальше: {example}',
+            'Справился? Тогда держи следующее, д*бил: {example}'
+        ],
+        math_wrong: [
+            'Неправильно, идиот! Ещё раз: {example}',
+            'Ты вообще тупой? Не так! Давай заново: {example}'
+        ],
+        math_complete: [
+            'Ого! Ты все 10 примеров решил? Не может быть. Ладно, молодец, но ты всё равно лох.',
+            '10 примеров осилил? Поздравляю, тупень. Больше не проси меня решать.'
+        ],
+        // Английский
+        english_start: [
+            'Учить вздумал, д*бил? Сейчас я из тебя выбью английский. Переведи: {ru} – ?',
+            'О, грамотей! Давай, переводи: {ru} Быстро, п*****!'
+        ],
+        english_correct: [
+            'Ну ладно, правильно. Но это случайность. Дальше: {ru} – ?',
+            'Угадал. Теперь это: {ru}',
+            'Правильно, но ты всё равно тупой. Дальше: {ru}'
+        ],
+        english_wrong: [
+            'Неправильно, м*дак! Правильный ответ: {en}. Запомни, идиот! Давай ещё раз это же слово: {ru} – ?',
+            'Ты чё, глухой? {en} надо говорить! Повторяй: {ru} – ?'
+        ],
+        english_last_chance: [
+            'Это последняя попытка, д*бил! Если ошибешься – заматерю до смерти. {ru} – ?',
+            'Смотри, ошибёшься – прокляну. Давай перевод: {ru} – ?'
+        ],
+        english_fail: [
+            'Всё, ты проиграл, чмо! Я тебя сейчас заматерю! {insult}',
+            'Ты не выучил даже половины, м*дак! Получай: {insult}'
+        ],
+        english_half: [
+            'Ого, ты выучил половину слов! Ну, может, не такой уж ты и тупой. Но всё равно лох. Давай дальше.',
+            'Половина позади! Но расслабляться рано, придурок. Продолжим.'
+        ],
+        english_complete: [
+            'Ты выучил все слова?! Не может быть. Ладно, ты крут (хотя я этого не говорил).',
+            'Справился, молодец. Но больше сюда не приходи, бесить меня.'
+        ],
+        // Голосовые ошибки
+        voice_fail: [
+            'Ты мычать решил? Ничего не разобрал, идиот!',
+            'Говори чётче, п*****! Не слышно ни х*я.',
+            'Твой микрофон лучше выкинуть. Повтори, дебил.'
+        ],
+        // Общие оскорбления + лень
+        insult: [
+            'Ты вообще тупой?',
+            'Иди на х*й со своими вопросами.',
+            'Задолбал уже, п*****.',
+            'Чмо ты ленивое.',
+            'Мозги включи, м*дак.',
+            'Да ты просто дебил!',
+            'Чтоб ты провалился, придурок.'
+        ],
+        exit_task: [
+            'Отстал? Ну и вали.',
+            'Ладно, проваливай, надоел.',
+            'Свободен, тупень.'
+        ],
+        fallback: [
+            'Что ты несёшь, п*****? Мне лень даже ругаться.',
+            'Сам понял, что сказал, д*бил? Отвали.',
+            'Пошёл ты на х*й, я устал.',
+            'Я устал от твоего тупизма, иди отсюда.',
+            'Мне лень тебе отвечать, вали.',
+            'Не хочу ничего говорить, иди нафиг.'
+        ]
+    };
+
+    // ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
+    function randomFrom(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    // Генерация безумно сложного примера
+    function generateCrazyMathExample() {
+        let a = Math.floor(Math.random() * 50) + 10;
+        let b = Math.floor(Math.random() * 20) + 5;
+        let c = Math.floor(Math.random() * 10) + 2;
+        let d = Math.floor(Math.random() * 5) + 1;
+        let e = Math.floor(Math.random() * 30) + 10;
+        let expr = `(${a} * ${b} - ${c}) / ${d} + ${e} ** 2`;
+        let answer;
+        try { answer = eval(expr); } catch (er) { answer = 0; }
+        return { text: expr, answer: answer };
+    }
+
+    // Генерация последовательности из 10 примеров (первый – простой, остальные – сложные)
+    function generateMathSequence(firstExampleText, firstExampleAnswer) {
+        let examples = [{ text: firstExampleText, answer: firstExampleAnswer }];
+        for (let i = 1; i < 10; i++) examples.push(generateCrazyMathExample());
+        return examples;
+    }
+
+    // ---------- ОПРЕДЕЛЕНИЕ НАМЕРЕНИЯ ----------
+    function detectIntent(text) {
+        let lower = text.toLowerCase().trim();
+
+        // Команда выхода из задания
+        if (lower.includes('отстань') || lower.includes('стоп') || lower.includes('хватит'))
+            return { type: 'stop' };
+
+        // Если есть активное задание
+        if (currentTask) {
+            if (currentTask.type === 'math') {
+                // Проверяем число (целое или с плавающей точкой)
+                if (/^-?\d*\.?\d+$/.test(lower.replace(/\s/g, ''))) {
+                    let val = parseFloat(lower);
+                    return { type: 'math_answer', value: val };
+                } else {
+                    return { type: 'math_invalid' };
+                }
+            } else if (currentTask.type === 'english') {
+                return { type: 'english_answer', value: lower };
             }
-            
-            // Очищаем контейнер и показываем загрузку
-            imageContainer.innerHTML = '<div class="loading">⏳ Генерируем изображение, подождите...</div>';
-            
-            // Кодируем промпт для URL
-            const encodedPrompt = encodeURIComponent(prompt);
-            // Используем API Pollinations (без ключа)
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=768&height=512&nologo=true&model=stable-diffusion`;
-            
-            // Создаём элемент img
-            const img = new Image();
-            img.onload = function() {
-                // Убираем загрузку и показываем картинку
-                imageContainer.innerHTML = '';
-                imageContainer.appendChild(img);
-            };
-            img.onerror = function() {
-                imageContainer.innerHTML = '<div class="loading" style="color: #e74c3c;">❌ Ошибка загрузки. Попробуйте другой запрос или повторите позже.</div>';
-            };
-            img.src = imageUrl;
-            img.alt = prompt;
         }
-        
-        // Обработчик кнопки
-        generateBtn.addEventListener('click', () => {
-            generateImage(promptInput.value);
-        });
-        
-        // Обработчик Enter в поле ввода
-        promptInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                generateImage(promptInput.value);
+
+        // Проверка на запрос математики
+        let isMathRequest = /[\d\s]*[+\-*/][\d\s]*/.test(lower) || lower.includes('сколько будет') || lower.includes('реши') || lower.includes('пример');
+        if (isMathRequest) return { type: 'math_request', text: text };
+
+        // Проверка на запрос английского
+        if (lower.includes('английский') || lower.includes('выучить слова') || lower.includes('english') || lower.includes('переведи'))
+            return { type: 'english_request' };
+
+        // Категории общения
+        if (lower.includes('привет') || lower.includes('здравствуй')) return { type: 'greeting' };
+        if (lower.includes('как дела') || lower.includes('как ты')) return { type: 'howareyou' };
+        if (lower.includes('пока') || lower.includes('досвидания')) return { type: 'bye' };
+        if (lower.includes('погода')) return { type: 'weather' };
+        if (lower.includes('как зовут') || lower.includes('твоё имя')) return { type: 'name' };
+        if (lower.includes('сколько лет') || lower.includes('твой возраст')) return { type: 'age' };
+        if (lower.includes('что умеешь') || lower.includes('твои возможности')) return { type: 'whatcanyoudo' };
+        if (lower.includes('шутку') || lower.includes('анекдот')) return { type: 'joke' };
+        if (lower.includes('люблю') || lower.includes('нравишься')) return { type: 'love' };
+
+        return { type: 'fallback' };
+    }
+
+    // ---------- ГЕНЕРАЦИЯ ОТВЕТА ----------
+    function generateAnswer(userMessage, intent) {
+        // Обработка активного задания
+        if (currentTask) {
+            if (intent.type === 'stop') {
+                currentTask = null;
+                return randomFrom(evil.exit_task);
             }
+            if (currentTask.type === 'math') {
+                if (intent.type === 'math_answer') {
+                    let currentEx = currentTask.examples[currentTask.currentIndex];
+                    if (Math.abs(intent.value - currentEx.answer) < 0.0001) {
+                        currentTask.currentIndex++;
+                        if (currentTask.currentIndex >= currentTask.examples.length) {
+                            currentTask = null;
+                            return randomFrom(evil.math_complete);
+                        } else {
+                            let nextEx = currentTask.examples[currentTask.currentIndex];
+                            let tmpl = randomFrom(evil.math_next);
+                            return tmpl.replace('{example}', nextEx.text);
+                        }
+                    } else {
+                        let tmpl = randomFrom(evil.math_wrong);
+                        return tmpl.replace('{example}', currentTask.examples[currentTask.currentIndex].text);
+                    }
+                } else {
+                    return randomFrom(evil.insult) + ' Введи число, д*бил!';
+                }
+            } else if (currentTask.type === 'english') {
+                if (intent.type === 'english_answer') {
+                    let currentWord = currentTask.words[currentTask.currentIndex];
+                    let userAns = intent.value.toLowerCase().trim();
+                    let correctEn = currentWord.en.toLowerCase();
+                    if (userAns === correctEn) {
+                        currentTask.correctCount++;
+                        currentTask.currentIndex++;
+                        if (!currentTask.halfReached && currentTask.correctCount >= HALF_COUNT) {
+                            currentTask.halfReached = true;
+                            if (currentTask.currentIndex < currentTask.words.length) {
+                                return randomFrom(evil.english_half) + ' Следующее: ' + currentTask.words[currentTask.currentIndex].ru + ' – ?';
+                            } else {
+                                currentTask = null;
+                                return randomFrom(evil.english_complete);
+                            }
+                        }
+                        if (currentTask.currentIndex >= currentTask.words.length) {
+                            currentTask = null;
+                            return randomFrom(evil.english_complete);
+                        } else {
+                            let tmpl = randomFrom(evil.english_correct);
+                            return tmpl.replace('{ru}', currentTask.words[currentTask.currentIndex].ru);
+                        }
+                    } else {
+                        // Ошибка: даём последний шанс или материм
+                        let tmpl = (Math.random() > 0.3) ? randomFrom(evil.english_wrong) : randomFrom(evil.english_last_chance);
+                        return tmpl.replace('{ru}', currentWord.ru).replace('{en}', currentWord.en);
+                    }
+                } else {
+                    return randomFrom(evil.insult) + ' Напиши перевод, тупой!';
+                }
+            }
+        }
+
+        // Нет активного задания
+        if (intent.type === 'math_request') {
+            let expr = userMessage.replace(/[^0-9+\-*/.]/g, '');
+            if (!expr) return randomFrom(evil.fallback);
+            let answer;
+            try { answer = eval(expr); } catch (e) { return randomFrom(evil.fallback); }
+            let examples = generateMathSequence(expr, answer);
+            currentTask = { type: 'math', examples: examples, currentIndex: 0 };
+            let first = examples[0];
+            let tmpl = randomFrom(evil.math_start);
+            return tmpl.replace('{example}', first.text);
+        }
+
+        if (intent.type === 'english_request') {
+            let shuffled = [...englishWords].sort(() => Math.random() - 0.5);
+            currentTask = { type: 'english', words: shuffled, currentIndex: 0, correctCount: 0, halfReached: false };
+            let first = shuffled[0];
+            let tmpl = randomFrom(evil.english_start);
+            return tmpl.replace('{ru}', first.ru);
+        }
+
+        let arr = evil[intent.type] || evil.fallback;
+        return randomFrom(arr);
+    }
+
+    // ---------- ДОБАВЛЕНИЕ СООБЩЕНИЯ В ИСТОРИЮ ----------
+    const historyDiv = document.getElementById('history');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const micBtn = document.getElementById('micBtn');
+    const statusDiv = document.getElementById('status');
+
+    function addMessage(sender, text) {
+        let msgDiv = document.createElement('div');
+        msgDiv.classList.add('message', sender === 'user' ? 'user' : 'bot');
+        msgDiv.textContent = text;
+        historyDiv.appendChild(msgDiv);
+        historyDiv.scrollTop = historyDiv.scrollHeight;
+    }
+
+    function handleUserMessage(text) {
+        if (!text.trim()) return;
+        addMessage('user', text);
+        userInput.value = '';
+
+        setTimeout(() => {
+            let intent = detectIntent(text);
+            let reply = generateAnswer(text, intent);
+            addMessage('bot', reply);
+        }, 200);
+    }
+
+    sendBtn.addEventListener('click', () => handleUserMessage(userInput.value));
+
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleUserMessage(userInput.value);
+    });
+
+    // ---------- ГОЛОСОВОЙ ВВОД ----------
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        micBtn.addEventListener('click', () => {
+            micBtn.classList.add('listening');
+            recognition.start();
         });
-        
-        // Обработчики примеров
-        document.querySelectorAll('.example-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const examplePrompt = btn.textContent;
-                promptInput.value = examplePrompt;
-                generateImage(examplePrompt);
-            });
-        });
-        
-        // При загрузке страницы генерируем картинку по умолчанию
-        window.addEventListener('load', () => {
-            // Можно сразу показать пример, но лучше дать пользователю самому нажать
-            // Но для демо сгенерируем сразу
-            // generateImage(promptInput.value);
-        });
-        
-        // Простой disclaimer
-        document.getElementById('disclaimerLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            alert('Это демонстрационный скрипт, использующий открытое API Pollinations.ai. Все изображения генерируются нейросетью Stable Diffusion на удалённых серверах и могут не соответствовать реальным сайтам.');
-        });
-    </script>
+
+        recognition.onresult = (event) => {
+            micBtn.classList.remove('listening');
+            let speechText = event.results[0][0].transcript;
+            userInput.value = speechText; // показываем, что распознано
+            handleUserMessage(speechText);
+        };
+
+        recognition.onerror = (event) => {
+            micBtn.classList.remove('listening');
+            let errorMsg = '';
+            if (event.error === 'no-speech') errorMsg = 'Ты мычать решил? Ничего не разобрал, идиот!';
+            else errorMsg = randomFrom(evil.voice_fail);
+            addMessage('bot', errorMsg);
+        };
+
+        recognition.onend = () => {
+            micBtn.classList.remove('listening');
+        };
+    } else {
+        micBtn.style.display = 'none'; // Скрыть микрофон, если не поддерживается
+    }
+
+    // Стартовое сообщение
+    addMessage('bot', 'Я злой учитель. Буду гнобить тебя, пока не выучишь английский или не решишь примеры. Напиши "английский" или отправь пример. Дроби пиши через точку, урод. И можешь говорить в микрофон – посмотрим, как ты шепелявишь.');
+})();
+</script>
 </body>
 </html>
